@@ -13,58 +13,73 @@ class GroundTruth:
         self.a = v**2 / q
         self.interval = 2 / self.w * pi
         self.space = np.linspace(0, self.interval, num=500)
+        self.ptr = []
 
     def plot(self):
         fig, ax = plt.subplots()
-        t, d = ([self.position(t)[0] for t in self.space], [self.position(t)[1] for t in self.space])
-        ax.plot(t, d, 'black')
+        # create object
         point, = ax.plot([0], [0], 'go')
-        point.set_data(0, 0)
-
-        def redraw(x, y):
-            xmin, xmax = ax.get_xlim()
-            ymin, ymax = ax.get_ylim()
-            if x < xmin:
-                ax.set_xlim(x-1, xmax)
-                ax.figure.canvas.draw()
-            elif x > xmax:
-                ax.set_xlim(xmin, x+1)
-                ax.figure.canvas.draw()
-            if y < ymin:
-                ax.set_ylim(y-1, ymax)
-                ax.figure.canvas.draw()
-            elif y > ymax:
-                ax.set_ylim(ymin, y+1)
-                ax.figure.canvas.draw()
 
         def init():
+            # setup plane
             ax.set_ylim(-11000, 11000)
             ax.set_xlim(-11000, 11000)
+            # plot track function
+            data = [self.trajectory(t) for t in self.space]
+            t, d = ([p[0] for p in data], [p[1] for p in data])
+            ax.plot(t, d, 'grey', alpha=0.5)
+            # plot initial position
+            point.set_data(0, 0)
             return point
 
         def frame(data):
-            x, y = data
-            redraw(x, y)
+            # t = time
+            # x = x position
+            # y = y position
+            t, x, y = data
+
+            # get current trajectory and scale it for visibility
+            a = (10 * self.acceleration(t)).flatten().tolist()
+            b = (200 * self.velocity(t)).flatten().tolist()
+
+            # clear previous frame
+            for p in self.ptr:
+                p.remove()
+            self.ptr.clear()
+            # plot acceleration and velocity as arrows
+            self.ptr.append(ax.arrow(*x, *y, *a, width=100, color="r"))
+            self.ptr.append(ax.arrow(*x, *y, *b, width=100, color="b"))
+            # plot new position
             point.set_data(x, y)
             return point
 
-        movement = ( self.position(t) for t in self.space )
-        ani = animation.FuncAnimation(fig, frame, movement, init_func=init, interval=100)
+        movement = ((t, *self.trajectory(t)) for t in self.space)
+        ani = animation.FuncAnimation(fig, frame, movement, init_func=init, interval=10)
         plt.show()
 
     def _x(self, t):
-        return self.a * sin(self.w * t)
+        return sin(self.w * t)
 
     def _y(self, t):
-        return self.a * sin(2 * self.w * t)
+        return sin(2 * self.w * t)
 
-    def position(self, t):
-        return np.array([[ self._x(t) ],
-                         [ self._y(t) ]])
+    def trajectory(self, t):
+        return self.a * np.array([[ self._x(t) ],
+                                  [ self._y(t) ]])
+
+    def acceleration(self, t):
+        return self.v * np.array([[ cos(self.w * t) / 2 ],
+                                  [ cos(2 * self.w * t) ]])
+
+    def velocity(self, t):
+        return -self.q * np.array([[ sin(self.w * t) / 4 ],
+                                   [ sin(2 * self.w * t) ]])
+
 
 def main():
     truth = GroundTruth(300, 9)
     truth.plot()
+
 
 if __name__ == '__main__':
     main()
