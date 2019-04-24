@@ -5,86 +5,66 @@ import numpy as np
 from numpy import sin, cos, pi
 from numpy.linalg import norm
 
-w = 9 / 600
-a = 300**2 / 9
+class GroundTruth:
+    def __init__(self, v, q):
+        self.v = v
+        self.q = q
+        self.w = q / 2*v
+        self.a = v**2 / q
+        self.interval = 2 / self.w * pi
+        self.space = np.linspace(0, self.interval, num=500)
 
-interval = np.arange(start=0, stop=1000 * pi, step=1)
+    def plot(self):
+        fig, ax = plt.subplots()
+        t, d = ([self.position(t)[0] for t in self.space], [self.position(t)[1] for t in self.space])
+        ax.plot(t, d, 'black')
+        point, = ax.plot([0], [0], 'go')
+        point.set_data(0, 0)
 
+        def redraw(x, y):
+            xmin, xmax = ax.get_xlim()
+            ymin, ymax = ax.get_ylim()
+            if x < xmin:
+                ax.set_xlim(x-1, xmax)
+                ax.figure.canvas.draw()
+            elif x > xmax:
+                ax.set_xlim(xmin, x+1)
+                ax.figure.canvas.draw()
+            if y < ymin:
+                ax.set_ylim(y-1, ymax)
+                ax.figure.canvas.draw()
+            elif y > ymax:
+                ax.set_ylim(ymin, y+1)
+                ax.figure.canvas.draw()
 
-def r(t):
-    return [a * sin(2 * w*t), a * sin(2*w*t)]
+        def init():
+            ax.set_ylim(-11000, 11000)
+            ax.set_xlim(-11000, 11000)
+            return point
 
+        def frame(data):
+            x, y = data
+            redraw(x, y)
+            point.set_data(x, y)
+            return point
 
-def dt_r(t):
-    return [150 * cos(w*t), 300 * cos(2*w*t)]
+        movement = ( self.position(t) for t in self.space )
+        ani = animation.FuncAnimation(fig, frame, movement, init_func=init, interval=100)
+        plt.show()
 
+    def _x(self, t):
+        return self.a * sin(self.w * t)
 
-def dt_dt_r(t):
-    return [9 * sin(w*t) / 4, 9 * sin(2*w*t)]
+    def _y(self, t):
+        return self.a * sin(2 * self.w * t)
 
-
-def t(t):
-    s = 1 / norm(dt_r(t))
-    return [s * cos(w*t), s * cos(2*w*t)]
-
-
-def n(t):
-    s = 1 / norm(dt_r(t))
-    return [-s * cos(2*w*t), s * cos(w*t)]
-
-
-def dt_dt_r_t(x):
-    a = t(x)
-    b = dt_dt_r(x)
-    return [a[0] * b[0], a[1] * b[1]]
-
-
-def dt_dt_r_n(t):
-    a = n(t)
-    b = dt_dt_r(t)
-    return [a[0] * b[0], a[1] * b[1]]
-
-
-def gen(fn):
-    for t in interval:
-        yield fn(t)
-
+    def position(self, t):
+        return np.array([[ self._x(t) ],
+                         [ self._y(t) ]])
 
 def main():
-    fig, axes = plt.subplots()
-    point, = axes.plot([0], [0], 'go')
-    point.set_data(0, 0)
-    #axes.grid()
-
-    def init_frame():
-        axes.set_ylim(-10, 10)
-        axes.set_xlim(-3, 3)
-        return point
-
-    def run(data):
-        t, y = data
-        xmin, xmax = axes.get_xlim()
-        ymin, ymax = axes.get_ylim()
-
-        if t >= xmax:
-            axes.set_xlim(xmin, t+1)
-            axes.figure.canvas.draw()
-        elif t <= xmin:
-            axes.set_xlim(t-1, xmax)
-            axes.figure.canvas.draw()
-        if y >= ymax:
-            axes.set_ylim(ymin, y+1)
-            axes.figure.canvas.draw()
-        elif y <= ymin:
-            axes.set_ylim(y-1, ymax)
-            axes.figure.canvas.draw()
-
-        point.set_data(t, y)
-        return point
-
-    ani = animation.FuncAnimation(fig, run, gen(dt_dt_r), init_func=init_frame, interval=10)
-    plt.show()
-
+    truth = GroundTruth(300, 9)
+    truth.plot()
 
 if __name__ == '__main__':
     main()
