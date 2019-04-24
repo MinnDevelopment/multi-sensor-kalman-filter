@@ -6,13 +6,13 @@ from numpy import sin, cos, pi
 from numpy.linalg import norm
 
 class GroundTruth:
-    def __init__(self, v, q):
+    def __init__(self, v, q, rounds=1):
         self.v = v
         self.q = q
         self.w = q / 2*v
         self.a = v**2 / q
         self.interval = 2 / self.w * pi
-        self.space = np.linspace(0, self.interval, num=500)
+        self.space = np.linspace(0, rounds * self.interval, num=rounds * 500)
         self.ptr = []
 
     def plot(self):
@@ -77,7 +77,7 @@ class GroundTruth:
 
 
 def main():
-    truth = GroundTruth(300, 9)
+    truth = GroundTruth(300, 9, rounds=4)
     truth.plot()
 
 
