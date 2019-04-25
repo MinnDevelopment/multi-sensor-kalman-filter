@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import operator
 from matplotlib import animation
+from matplotlib.patches import Rectangle
 from random import random, randint
 from numpy import sqrt
 
@@ -50,6 +51,20 @@ class Dot:
             self.moves.append((x, y))
 
 
+class Obstacle:
+    def __init__(self, a, b, c, d):
+        self.pos = (a, b)
+        self.width = abs(a - c)
+        self.height = abs(b - d)
+
+    def draw(self, ax):
+        rec = Rectangle(self.pos, self.width, self.height)
+        ax.add_patch(rec)
+
+    def is_hit(self, x, y):
+        return self.pos[0] <= x <= self.pos[0] + self.width and self.pos[1] <= y <= self.pos[1] + self.height
+
+
 class Level:
     def __init__(self):
         self.goal = (0, 0)
@@ -60,6 +75,13 @@ class Level:
         self.dots = {}
         self.pos = {}
         self.obstacles = []
+
+    def add_obstacle(self, x1, y1, x2, y2):
+        self.obstacles.append(Obstacle(x1, y1, x2, y2))
+
+    def draw_obstacles(self):
+        for obstacle in self.obstacles:
+            obstacle.draw(self.ax)
 
     def redraw_dots(self):
         for dot in self.get_dots():
@@ -89,6 +111,9 @@ class Level:
             self.add_dot(Dot())
 
     def is_death(self, x, y):
+        for o in self.obstacles:
+            if o.is_hit(x, y):
+                return True
         return x < -100 or x > 100 or y < 0 or y > 200
 
     @staticmethod
@@ -133,6 +158,7 @@ class Level:
 
         self.fig, self.ax = plt.subplots()
         self.redraw_dots()
+        self.draw_obstacles()
 
     def reset(self):
         for dot in self.dots:
@@ -224,6 +250,9 @@ class Population:
 def main():
     level = Level()
     level.goal = (0, 190)
+    level.add_obstacle(-10, 75, 100, 90)
+    level.add_obstacle(-100, 125, 10, 140)
+    level.draw_obstacles()
     pop = Population(level, 100)
     pop.mutate(1000)
 
