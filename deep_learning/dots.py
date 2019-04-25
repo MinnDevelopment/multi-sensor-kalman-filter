@@ -1,23 +1,26 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from random import random
+from numpy import sqrt
 
 def random_trajectory():
     return random() * 20 - 10
+
+def dist(a, b):
+    x = a[0]-b[0]
+    y = a[1]-b[1]
+    return sqrt(x**2 + y**2)
 
 class Dot:
     def __init__(self):
         self.dead = False
         self.champion = False
         self.moves = []
-        self.move_count = 0
 
-    def next_move(self):
-        if self.dead or len(self.moves) <= self.move_count:
+    def next_move(self, t):
+        if self.dead or t >= len(self.moves):
             return None
-        move = self.moves[self.move_count]
-        self.move_count += 1
-        return move
+        return self.moves[t]
 
     def mutate(self):
         for move in self.moves:
@@ -37,18 +40,32 @@ class Level:
         self.goal = (0, 0)
         self.fig, self.ax = plt.subplots()
         self.dots = {}
+        self.pos = {}
         self.obstacles = []
+
+    def redraw_dots(self):
+        for dot in self.get_dots():
+            ptr = self.dots[dot]
+            pos = self.pos[dot]
+            ptr.remove()
+            color = 'ko'
+            if dot.champion:
+                color = 'bo'
+            elif dot.dead:
+                color = 'ro'
+            self.dots[dot], = self.ax.plot(*pos, color)
 
     def get_dots(self):
         return self.dots.keys()
 
     def get_position(self, dot):
-        return self.dots[dot].get_data()
+        return self.pos[dot]
 
     def add_dots(self, amt):
         for i in range(amt):
             dot = Dot()
             self.dots[dot], = self.ax.plot(0, 0, 'ko')
+            self.pos[dot] = (0, 0)
 
     def is_death(self, x, y):
         return x < -100 or x > 100 or y < 0 or y > 200
@@ -67,7 +84,7 @@ class Level:
 
     def move_dot(self, dot, x, y):
         ptr = self.dots[dot]
-        old_x, old_y = ptr.get_data()
+        old_x, old_y = self.get_position(dot)
         new_x = old_x + x
         new_y = old_y + y
         if self.is_death(new_x, new_y):
@@ -77,6 +94,7 @@ class Level:
             self.dots[dot], = self.ax.plot(new_x, new_y, 'ro')
         else:
             ptr.set_data(new_x, new_y)
+        self.pos[dot] = (new_x, new_y)
 
     def draw(self):
         self.ax.set_xlim(-100, 100)
@@ -85,30 +103,43 @@ class Level:
         plt.show()
 
         self.fig, self.ax = plt.subplots()
-        for dot in self.get_dots():
-            old_pos = self.dots[dot].get_data()
-            if dot.dead:
-                self.dots[dot], = self.ax.plot(old_pos, 'ro')
-            elif dot.champion:
-                self.dots[dot], = self.ax.plot(old_pos, 'bo')
-            else:
-                self.dots[dot], = self.ax.plot(old_pos, 'ko')
+        self.redraw_dots()
 
 class Population:
-    def __init__(self, level):
+    def __init__(self, level, size):
         self.level = level
+        self.size = size
+        self.level.add_dots(size)
+
+    def mutate(self, amt=100):
+        for dot in self.level.get_dots():
+            for i in range(100):
+                dot.mutate()
 
     def find_champion(self):
         champ = None
+        min_dist = 1000
         goal = self.level.goal
         for dot in self.level.get_dots():
             dot.champion = False
-            if champ is None or distance(goal, self.level.get_position(dot)) < distance(goal, self.level.get_position(champ)):
+            pos = self.level.get_position(dot)
+            distance = dist(goal, pos)
+            if champ is None or distance < min_dist:
                 champ = dot
+                min_dist = distance
 
         if champ:
             champ.champion = True
+        self.level.redraw_dots()
         return champ
+
+    def next_move(self, t):
+        moved = False
+        for dot in self.level.get_dots():
+            move = dot.next_move(t)
+            if move:
+                moved = True
+                self.level.move_dot(dot, *move)
 
     def get_champion(self):
         for dot in self.level.get_dots():
@@ -119,17 +150,12 @@ class Population:
 def main():
     level = Level()
     level.goal = (0, 190)
-    level.add_dots(5)
-    for dot in level.get_dots():
-        for i in range(100):
-            dot.mutate()
-    for dot in level.get_dots():
-        move = dot.next_move()
-        while move:
-            level.move_dot(dot, *move)
-            move = dot.next_move()
+    pop = Population(level, 100)
+    pop.mutate(1000)
 
-    level.draw()
+    ani = animation.FuncAnimation(level.fig, pop.next_move, 1000, interval=10)
+    pop.find_champion()
+    ani = animation.FuncAnimation(level.fig, pop.next_move, 1000, interval=10)
 
 
 
