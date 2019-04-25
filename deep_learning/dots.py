@@ -5,12 +5,17 @@ from matplotlib.patches import Rectangle
 from random import randint
 from numpy import sqrt
 from numpy.random import random
+from time import sleep
 
 
 def random_trajectory():
     if random() < 0.5:
         return random() * 10 - 20
     return random() * 10 + 10
+
+
+def random_move():
+	return (random_trajectory(), random_trajectory())
 
 
 def dist(a, b):
@@ -252,6 +257,8 @@ class Population:
 
     def next_move(self, t):
         if self.finished:
+            sleep(2)
+            plt.close(self.level.fig)
             return []
         print("Running move: ", t)
         self.finished = True
@@ -277,13 +284,15 @@ def main():
     level.add_obstacle(-100, 125, 10, 145)
     level.draw_obstacles()
     pop = Population(level, 100)
-    pop.mutate(1000)
+    for i in range(10):
+	     for dot in level.get_dots():
+		     dot.moves.append(random_move())
 
-    ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=10)
+    ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=100, repeat=False)
     level.draw()
     for i in range(100):
         pop.evolve()
-        ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=10)
+        ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=100, repeat=False)
         level.draw()
 
 
