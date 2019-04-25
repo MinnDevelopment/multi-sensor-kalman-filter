@@ -38,17 +38,21 @@ class Dot:
         return self.moves[t]
 
     def mutate(self):
-        for move in self.moves:
+        if self.champion:
+            return
+        for i, move in enumerate(self.moves):
             # small chance to change trajectory
-            if random() < 0.1:
-                move = (random_trajectory(), move[1])
-            if random() < 0.1:
-                move = (move[0], random_trajectory())
+            if random() < 0.2:
+                self.moves[i] = (random_trajectory(), move[1])
+            if random() < 0.2:
+                self.moves[i] = (move[0], random_trajectory())
         # small chance to gain additional move
-        if random() < 0.05:
+        if random() < 0.1:
             x = random_trajectory()
             y = random_trajectory()
             self.moves.append((x, y))
+        elif random() < 0.05 and len(self.moves) > 0:
+            self.moves.pop(len(self.moves) - 1)
 
 
 class Obstacle:
@@ -174,12 +178,14 @@ class Population:
         self.size = size
         self.level.add_dots(size)
         self.print_gen()
+        self.finished = False
 
     def fitness(self, dot):
         pos = self.level.get_position(dot)
-        fit = 100 if dot.win else 100 - dist(pos, self.level.goal)**2
-        fit += 100 - dot.needed_moves
-        return fit
+        if dot.win:
+            return 10000 - dot.needed_moves**2 * 10
+        else:
+            return -dist(pos, self.level.goal)
 
     def print_gen(self):
         if self.label:
@@ -207,14 +213,21 @@ class Population:
     def evolve(self):
         self.gen += 1
         self.print_gen()
-        self.find_champion()
+        champion = self.find_champion()
+        champ_pos = self.level.get_position(champion)
+        champ_fit = self.fitness(champion)
         self.selection()
         self.repopulate()
         self.mutate()
+        self.finished = False
         self.level.reset()
+        print(f"=== Champion: {champ_pos} {champ_fit} ===")
+        print(f"=== Evolved: Gen {self.gen} ===")
 
     def mutate(self, amt=100):
         for dot in self.level.get_dots():
+            if dot.champion:
+                continue
             for i in range(amt):
                 dot.mutate()
 
@@ -223,19 +236,24 @@ class Population:
         best_fit = -5000
         for dot in self.level.get_dots():
             dot.champion = False
-            distance = self.fitness(dot)
-            if champ is None or distance > best_fit:
+            fit = self.fitness(dot)
+            if champ is None or fit > best_fit:
                 champ = dot
-                best_fit = distance
+                best_fit = fit
 
         if champ:
             champ.champion = True
         return champ
 
     def next_move(self, t):
+        if self.finished:
+            return []
+        print("Running move: ", t)
+        self.finished = True
         for dot in self.level.get_dots():
             move = dot.next_move(t)
             if move:
+                self.finished = False
                 self.level.move_dot(dot, *move)
 
         return []
@@ -256,11 +274,11 @@ def main():
     pop = Population(level, 100)
     pop.mutate(1000)
 
-    ani = animation.FuncAnimation(level.fig, pop.next_move, 1000, interval=10)
+    ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=10)
     level.draw()
     for i in range(100):
         pop.evolve()
-        ani = animation.FuncAnimation(level.fig, pop.next_move, 1000, interval=10)
+        ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=10)
         level.draw()
 
 
