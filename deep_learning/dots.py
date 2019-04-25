@@ -2,14 +2,15 @@ import matplotlib.pyplot as plt
 import operator
 from matplotlib import animation
 from matplotlib.patches import Rectangle
-from random import random, randint
+from random import randint
 from numpy import sqrt
+from numpy.random import random
 
 
 def random_trajectory():
     if random() < 0.5:
-        return random() * 5 - 10
-    return random() * 5 + 5
+        return random() * 10 - 20
+    return random() * 10 + 10
 
 
 def dist(a, b):
@@ -42,16 +43,16 @@ class Dot:
             return
         for i, move in enumerate(self.moves):
             # small chance to change trajectory
-            if random() < 0.2:
+            if random() < 0.05:
                 self.moves[i] = (random_trajectory(), move[1])
-            if random() < 0.2:
+            if random() < 0.05:
                 self.moves[i] = (move[0], random_trajectory())
         # small chance to gain additional move
-        if random() < 0.1:
+        if random() < 0.01:
             x = random_trajectory()
             y = random_trajectory()
             self.moves.append((x, y))
-        elif random() < 0.05 and len(self.moves) > 0:
+        elif random() < 0.005 and len(self.moves) > 0:
             self.moves.pop(len(self.moves) - 1)
 
 
@@ -106,9 +107,9 @@ class Level:
         return self.pos[dot]
 
     def add_dot(self, dot):
-        ptr, = self.ax.plot(0, 0, 'ko')
+        ptr, = self.ax.plot(0, 20, 'ko')
         self.dots[dot] = ptr
-        self.pos[dot] = (0, 0)
+        self.pos[dot] = (0, 20)
 
     def add_dots(self, amt):
         for i in range(amt):
@@ -145,11 +146,10 @@ class Level:
         new_y = old_y + y
         if self.is_death(new_x, new_y):
             dot.dead = True
-            ptr.remove()
             new_x, new_y = self.get_real_pos(new_x, new_y)
-            self.dots[dot], = self.ax.plot(new_x, new_y, 'ro')
-        else:
-            ptr.set_data(new_x, new_y)
+            if not dot.champion:
+                ptr.set_color("red")
+        ptr.set_data(new_x, new_y)
         if dist(self.goal, (new_x, new_y)) < 2:
             dot.win = True
         self.pos[dot] = (new_x, new_y)
@@ -166,7 +166,8 @@ class Level:
 
     def reset(self):
         for dot in self.dots:
-            self.pos[dot] = (0, 0)
+            self.pos[dot] = (0, 20)
+            dot.reset()
         self.redraw_dots()
 
 
@@ -182,10 +183,14 @@ class Population:
 
     def fitness(self, dot):
         pos = self.level.get_position(dot)
+        fit = 0
         if dot.win:
-            return 10000 - dot.needed_moves**2 * 10
+            fit = 10000 - dot.needed_moves**2 * 10
         else:
-            return -dist(pos, self.level.goal)
+            fit = 1/(dist(pos, self.level.goal)**2)
+        if dot.dead:
+            fit -= 1000
+        return fit
 
     def print_gen(self):
         if self.label:
@@ -224,7 +229,7 @@ class Population:
         print(f"=== Champion: {champ_pos} {champ_fit} ===")
         print(f"=== Evolved: Gen {self.gen} ===")
 
-    def mutate(self, amt=100):
+    def mutate(self, amt=1):
         for dot in self.level.get_dots():
             if dot.champion:
                 continue
@@ -268,8 +273,8 @@ class Population:
 def main():
     level = Level()
     level.goal = (0, 190)
-    level.add_obstacle(-10, 75, 100, 90)
-    level.add_obstacle(-100, 125, 10, 140)
+    level.add_obstacle(-10, 75, 100, 95)
+    level.add_obstacle(-100, 125, 10, 145)
     level.draw_obstacles()
     pop = Population(level, 100)
     pop.mutate(1000)
