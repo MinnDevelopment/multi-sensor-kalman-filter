@@ -1,11 +1,12 @@
-import matplotlib.pyplot as plt
 import operator
+from random import randint
+from time import sleep
+
+import matplotlib.pyplot as plt
 from matplotlib import animation
 from matplotlib.patches import Rectangle
-from random import randint
 from numpy import sqrt
 from numpy.random import random
-from time import sleep
 
 
 def random_trajectory():
@@ -15,13 +16,13 @@ def random_trajectory():
 
 
 def random_move():
-	return (random_trajectory(), random_trajectory())
+    return (random_trajectory(), random_trajectory())
 
 
 def dist(a, b):
-    x = a[0]-b[0]
-    y = a[1]-b[1]
-    return sqrt(x**2 + y**2)
+    x = a[0] - b[0]
+    y = a[1] - b[1]
+    return sqrt(x ** 2 + y ** 2)
 
 
 class Dot:
@@ -190,9 +191,9 @@ class Population:
         pos = self.level.get_position(dot)
         fit = 0
         if dot.win:
-            fit = 10000 - dot.needed_moves**2 * 10
+            fit = 10000 - dot.needed_moves ** 2 * 10
         else:
-            fit = 1/(dist(pos, self.level.goal)**2)
+            fit = 1 / (dist(pos, self.level.goal) ** 2)
         if dot.dead:
             fit -= 1000
         return fit
@@ -213,47 +214,24 @@ class Population:
 
     def repopulate(self):
         dots = list(self.level.get_dots())
+        for dot in dots:
+            dot.champion = True
         while len(self.level.get_dots()) < self.size:
             index = randint(0, len(dots) - 1)
             parent = dots[index]
             dot = Dot()
             dot.moves = list(parent.moves)
+            dot.mutate()
             self.level.add_dot(dot)
 
     def evolve(self):
         self.gen += 1
         self.print_gen()
-        champion = self.find_champion()
-        champ_pos = self.level.get_position(champion)
-        champ_fit = self.fitness(champion)
         self.selection()
         self.repopulate()
-        self.mutate()
         self.finished = False
         self.level.reset()
-        print(f"=== Champion: {champ_pos} {champ_fit} ===")
         print(f"=== Evolved: Gen {self.gen} ===")
-
-    def mutate(self, amt=1):
-        for dot in self.level.get_dots():
-            if dot.champion:
-                continue
-            for i in range(amt):
-                dot.mutate()
-
-    def find_champion(self):
-        champ = None
-        best_fit = -5000
-        for dot in self.level.get_dots():
-            dot.champion = False
-            fit = self.fitness(dot)
-            if champ is None or fit > best_fit:
-                champ = dot
-                best_fit = fit
-
-        if champ:
-            champ.champion = True
-        return champ
 
     def next_move(self, t):
         if self.finished:
@@ -279,14 +257,14 @@ class Population:
 
 def main():
     level = Level()
-    level.goal = (0, 190)
+    level.goal = (75, 190)
     level.add_obstacle(-10, 75, 100, 95)
     level.add_obstacle(-100, 125, 10, 145)
     level.draw_obstacles()
-    pop = Population(level, 100)
+    pop = Population(level, 1000)
     for i in range(10):
-	     for dot in level.get_dots():
-		     dot.moves.append(random_move())
+        for dot in level.get_dots():
+            dot.moves.append(random_move())
 
     ani = animation.FuncAnimation(level.fig, pop.next_move, 500, interval=100, repeat=False)
     level.draw()
