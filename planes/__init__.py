@@ -2,8 +2,8 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import sin, cos, pi, sqrt
-from numpy.random import randn
+from numpy import sin, cos, pi
+from numpy.random import normal
 
 
 class GroundTruth:
@@ -80,7 +80,7 @@ class GroundTruth:
 class Sensor:
     def __init__(self, error=50):
         self.truth = GroundTruth(300, 9)
-        self.error = sqrt(error)
+        self.sigma = error
         self.point = None
         self.real_point = None
         self.countdown = 0
@@ -88,15 +88,22 @@ class Sensor:
     def init(self, ax):
         self.point, = ax.plot([0], [0], "ro")
         self.real_point, = ax.plot([0], [0], "go")
+        # plot track function
+        data = [self.truth.trajectory(t) for t in self.truth.space]
+        t, d = ([p[0] for p in data], [p[1] for p in data])
+        ax.plot(t, d, 'grey', alpha=0.5)
 
     def get_position_data(self, t):
+        return self.truth.trajectory(t) + self.sigma * normal()
+
+    def draw(self, t):
         real_position = self.truth.trajectory(t)
         self.real_point.set_data(real_position)
         self.countdown -= 1
         if self.countdown > 0:
             return self.point
         self.countdown = 10
-        pos = self.error * randn() + real_position
+        pos = self.get_position_data(t)
         self.point.set_data(pos)
         return self.point
 
@@ -109,7 +116,7 @@ def main():
     ax.set_ylim(-11000, 11000)
     ax.set_xlim(-11000, 11000)
     sensor.init(ax)
-    ani = animation.FuncAnimation(fig, sensor.get_position_data, frames, repeat=False, interval=10)
+    ani = animation.FuncAnimation(fig, sensor.draw, frames, repeat=False, interval=10)
     plt.show()
 
 
