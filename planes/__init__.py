@@ -1,9 +1,10 @@
 
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import numpy as np
-from numpy import sin, cos, pi
-from numpy.linalg import norm
+from numpy import sin, cos, pi, sqrt
+from numpy.random import randn
+
 
 class GroundTruth:
     def __init__(self, v, q, rounds=1):
@@ -76,9 +77,40 @@ class GroundTruth:
                                    [ sin(2 * self.w * t) ]])
 
 
+class Sensor:
+    def __init__(self, error=50):
+        self.truth = GroundTruth(300, 9)
+        self.error = sqrt(error)
+        self.point = None
+        self.real_point = None
+        self.countdown = 0
+
+    def init(self, ax):
+        self.point, = ax.plot([0], [0], "ro")
+        self.real_point, = ax.plot([0], [0], "go")
+
+    def get_position_data(self, t):
+        real_position = self.truth.trajectory(t)
+        self.real_point.set_data(real_position)
+        self.countdown -= 1
+        if self.countdown > 0:
+            return self.point
+        self.countdown = 10
+        pos = self.error * randn() + real_position
+        self.point.set_data(pos)
+        return self.point
+
+
 def main():
-    truth = GroundTruth(300, 9, rounds=4)
-    truth.plot()
+    sensor = Sensor(1000)
+    frames = sensor.truth.space
+
+    fig, ax = plt.subplots()
+    ax.set_ylim(-11000, 11000)
+    ax.set_xlim(-11000, 11000)
+    sensor.init(ax)
+    ani = animation.FuncAnimation(fig, sensor.get_position_data, frames, repeat=False, interval=10)
+    plt.show()
 
 
 if __name__ == '__main__':
