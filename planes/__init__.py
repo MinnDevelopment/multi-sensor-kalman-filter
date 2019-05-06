@@ -1,4 +1,6 @@
 
+from time import time
+
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,20 +80,28 @@ class GroundTruth:
 
 
 class Sensor:
-    def __init__(self, error=50):
+    def __init__(self, error=50, interval=5):
         self.truth = GroundTruth(300, 9)
         self.sigma = error
-        self.point = None
+        self.interval = interval
+        self._next_read = 0
+        self._point = None
+        self._accel = None
+        self._veloc = None
+        self._ax = None
         self.real_point = None
-        self.countdown = 0
 
     def init(self, ax):
-        self.point, = ax.plot([0], [0], "ro")
+        self._ax = ax
+        self._point, = ax.plot([0], [0], "ro")
         self.real_point, = ax.plot([0], [0], "go")
         # plot track function
         data = [self.truth.trajectory(t) for t in self.truth.space]
         t, d = ([p[0] for p in data], [p[1] for p in data])
         ax.plot(t, d, 'grey', alpha=0.5)
+
+        self._accel = ax.arrow(0, 0, 0, 0, width=100, color="r")
+        self._veloc = ax.arrow(0, 0, 0, 0, width=100, color="b")
 
     def get_position_data(self, t):
         return self.truth.trajectory(t) + self.sigma * normal()
@@ -99,24 +109,38 @@ class Sensor:
     def draw(self, t):
         real_position = self.truth.trajectory(t)
         self.real_point.set_data(real_position)
-        self.countdown -= 1
-        if self.countdown > 0:
-            return self.point
-        self.countdown = 10
+        if self._next_read > time():
+            return self._point
+        else:
+            return self.plot_position(t)
+
+    def plot_position(self, t):
+        self._next_read = time() + self.interval
         pos = self.get_position_data(t)
-        self.point.set_data(pos)
-        return self.point
+        self._point.set_data(pos)
+        self.plot_arrows(t, pos)
+        return self._point
+
+    def plot_arrows(self, t, pos):
+        # TODO: RV change for velocity/acceleration vectors
+        a = (10 * self.truth.acceleration(t)).flatten().tolist()
+        b = (200 * self.truth.velocity(t)).flatten().tolist()
+        self._accel.remove()
+        self._veloc.remove()
+        (x, y) = pos.flatten()
+        self._accel = self._ax.arrow(x, y, *a, width=100, color="r")
+        self._veloc = self._ax.arrow(x, y, *b, width=100, color="b")
 
 
 def main():
-    sensor = Sensor(1000)
+    sensor = Sensor(50, 5)
     frames = sensor.truth.space
 
     fig, ax = plt.subplots()
     ax.set_ylim(-11000, 11000)
     ax.set_xlim(-11000, 11000)
     sensor.init(ax)
-    ani = animation.FuncAnimation(fig, sensor.draw, frames, repeat=False, interval=10)
+    ani = animation.FuncAnimation(fig, sensor.draw, frames, repeat=True, interval=10)
     plt.show()
 
 
