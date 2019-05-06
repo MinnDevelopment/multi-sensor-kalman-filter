@@ -103,8 +103,14 @@ class Sensor:
         self._accel = ax.arrow(0, 0, 0, 0, width=100, color="r")
         self._veloc = ax.arrow(0, 0, 0, 0, width=100, color="b")
 
-    def get_position_data(self, t):
-        return self.truth.trajectory(t) + self.sigma * normal()
+    def get_trajectory_data(self, t):
+        return self.truth.trajectory(t) + self.sigma * normal(size=(2, 1))
+
+    def get_acceleration_data(self, t):
+        return self.truth.acceleration(t) + self.sigma * normal(size=(2, 1))
+
+    def get_velocity_data(self, t):
+        return self.truth.velocity(t) + self.sigma * normal(size=(2, 1))
 
     def draw(self, t):
         real_position = self.truth.trajectory(t)
@@ -116,15 +122,14 @@ class Sensor:
 
     def plot_position(self, t):
         self._next_read = time() + self.interval
-        pos = self.get_position_data(t)
+        pos = self.get_trajectory_data(t)
         self._point.set_data(pos)
         self.plot_arrows(t, pos)
         return self._point
 
     def plot_arrows(self, t, pos):
-        # TODO: RV change for velocity/acceleration vectors
-        a = (10 * self.truth.acceleration(t)).flatten().tolist()
-        b = (200 * self.truth.velocity(t)).flatten().tolist()
+        a = (10 * self.get_acceleration_data(t)).flatten().tolist()
+        b = (50 * self.get_velocity_data(t)).flatten().tolist()
         self._accel.remove()
         self._veloc.remove()
         (x, y) = pos.flatten()
