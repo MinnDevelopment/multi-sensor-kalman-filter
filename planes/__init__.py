@@ -107,10 +107,10 @@ class Sensor:
         return self.truth.trajectory(t) + self.sigma * normal(size=(2, 1))
 
     def get_acceleration_data(self, t):
-        return self.truth.acceleration(t) + self.sigma * normal(size=(2, 1))
+        return self.truth.acceleration(t) # + self.sigma * normal(size=(2, 1))
 
     def get_velocity_data(self, t):
-        return self.truth.velocity(t) + self.sigma * normal(size=(2, 1))
+        return self.truth.velocity(t) # + self.sigma * normal(size=(2, 1))
 
     def draw(self, t):
         real_position = self.truth.trajectory(t)
@@ -129,7 +129,7 @@ class Sensor:
 
     def plot_arrows(self, t, pos):
         a = (10 * self.get_acceleration_data(t)).flatten().tolist()
-        b = (50 * self.get_velocity_data(t)).flatten().tolist()
+        b = (200 * self.get_velocity_data(t)).flatten().tolist()
         self._accel.remove()
         self._veloc.remove()
         (x, y) = pos.flatten()
