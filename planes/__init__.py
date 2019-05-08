@@ -16,49 +16,6 @@ class GroundTruth:
         self.a = v**2 / q
         self.interval = 2 / self.w * pi
         self.space = np.linspace(0, rounds * self.interval, num=rounds * 500)
-        self.ptr = []
-
-    def plot(self):
-        fig, ax = plt.subplots()
-        # create object
-        point, = ax.plot([0], [0], 'go')
-
-        def init():
-            # setup plane
-            ax.set_ylim(-11000, 11000)
-            ax.set_xlim(-11000, 11000)
-            # plot track function
-            data = [self.trajectory(t) for t in self.space]
-            t, d = ([p[0] for p in data], [p[1] for p in data])
-            ax.plot(t, d, 'grey', alpha=0.5)
-            # plot initial position
-            point.set_data(0, 0)
-            return point
-
-        def frame(data):
-            # t = time
-            # x = x position
-            # y = y position
-            t, x, y = data
-
-            # get current trajectory and scale it for visibility
-            a = (10 * self.acceleration(t)).flatten().tolist()
-            b = (200 * self.velocity(t)).flatten().tolist()
-
-            # clear previous frame
-            for p in self.ptr:
-                p.remove()
-            self.ptr.clear()
-            # plot acceleration and velocity as arrows
-            self.ptr.append(ax.arrow(*x, *y, *a, width=100, color="r"))
-            self.ptr.append(ax.arrow(*x, *y, *b, width=100, color="b"))
-            # plot new position
-            point.set_data(x, y)
-            return point
-
-        movement = ((t, *self.trajectory(t)) for t in self.space)
-        ani = animation.FuncAnimation(fig, frame, movement, init_func=init, interval=10)
-        plt.show()
 
     def _x(self, t):
         return sin(self.w * t)
@@ -84,14 +41,32 @@ class Sensor:
         self.truth = GroundTruth(300, 9)
         self.sigma = error
         self.interval = interval
+        self.real_point = None
+
         self._next_read = 0
         self._point = None
         self._accel = None
         self._veloc = None
         self._ax = None
-        self.real_point = None
 
-    def init(self, ax):
+    def get_trajectory_data(self, t):
+        return self.truth.trajectory(t) + self.sigma * normal(size=(2, 1))
+
+    def get_acceleration_data(self, t):
+        return self.truth.acceleration(t) # + self.sigma * normal(size=(2, 1))
+
+    def get_velocity_data(self, t):
+        return self.truth.velocity(t) # + self.sigma * normal(size=(2, 1))
+
+    def plot_frame(self, t):
+        real_position = self.truth.trajectory(t)
+        self.real_point.set_data(real_position)
+        if self._next_read > time():
+            return self._point
+        else:
+            return self.plot_trajectory(t)
+
+    def plot_init(self, ax):
         self._ax = ax
         self._point, = ax.plot([0], [0], "ro")
         self.real_point, = ax.plot([0], [0], "go")
@@ -103,24 +78,7 @@ class Sensor:
         self._accel = ax.arrow(0, 0, 0, 0, width=100, color="r")
         self._veloc = ax.arrow(0, 0, 0, 0, width=100, color="b")
 
-    def get_trajectory_data(self, t):
-        return self.truth.trajectory(t) + self.sigma * normal(size=(2, 1))
-
-    def get_acceleration_data(self, t):
-        return self.truth.acceleration(t) # + self.sigma * normal(size=(2, 1))
-
-    def get_velocity_data(self, t):
-        return self.truth.velocity(t) # + self.sigma * normal(size=(2, 1))
-
-    def draw(self, t):
-        real_position = self.truth.trajectory(t)
-        self.real_point.set_data(real_position)
-        if self._next_read > time():
-            return self._point
-        else:
-            return self.plot_position(t)
-
-    def plot_position(self, t):
+    def plot_trajectory(self, t):
         self._next_read = time() + self.interval
         pos = self.get_trajectory_data(t)
         self._point.set_data(pos)
@@ -138,14 +96,14 @@ class Sensor:
 
 
 def main():
-    sensor = Sensor(50, 5)
+    sensor = Sensor()
     frames = sensor.truth.space
 
     fig, ax = plt.subplots()
     ax.set_ylim(-11000, 11000)
     ax.set_xlim(-11000, 11000)
-    sensor.init(ax)
-    ani = animation.FuncAnimation(fig, sensor.draw, frames, repeat=True, interval=10)
+    sensor.plot_init(ax)
+    ani = animation.FuncAnimation(fig, sensor.plot_frame, frames, repeat=True, interval=10)
     plt.show()
 
 
