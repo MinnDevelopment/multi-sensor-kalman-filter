@@ -1,11 +1,9 @@
-
+from numpy import sin, cos, pi, sqrt
+from numpy.random import standard_normal
 from time import time
-
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import sin, cos, pi
-from numpy.random import normal
 
 
 class GroundTruth:
@@ -48,9 +46,16 @@ class Sensor:
         self._accel = None
         self._veloc = None
         self._ax = None
+        self._circle = None
+        self._radius = self.sigma * 3
+
+    def get_error(self):
+        vec = standard_normal((2, 1))
+        print("Normal: ", vec.flatten())
+        return self.sigma * vec
 
     def get_trajectory_data(self, t):
-        return self.truth.trajectory(t) + self.sigma * normal(size=(2, 1))
+        return self.truth.trajectory(t) + self.get_error()
 
     def get_acceleration_data(self, t):
         return self.truth.acceleration(t) # + self.sigma * normal(size=(2, 1))
@@ -64,7 +69,7 @@ class Sensor:
         if self._next_read > time():
             return self._point
         else:
-            return self.plot_trajectory(t)
+            return self.plot_trajectory(t, real_position)
 
     def plot_init(self, ax):
         self._ax = ax
@@ -78,10 +83,16 @@ class Sensor:
         self._accel = ax.arrow(0, 0, 0, 0, width=100, color="r")
         self._veloc = ax.arrow(0, 0, 0, 0, width=100, color="b")
 
-    def plot_trajectory(self, t):
+    def plot_trajectory(self, t, real_pos):
         self._next_read = time() + self.interval
-        pos = self.get_trajectory_data(t)
+        error = self.get_error()
+        pos = error + real_pos
+        print("Error: ", error.flatten())
         self._point.set_data(pos)
+        if self._circle:
+            self._circle.remove()
+        self._circle = plt.Circle(pos, self._radius, color="r", fill=False)
+        self._ax.add_artist(self._circle)
         self.plot_arrows(t, pos)
         return self._point
 
@@ -96,7 +107,7 @@ class Sensor:
 
 
 def main():
-    sensor = Sensor()
+    sensor = Sensor(500)
     frames = sensor.truth.space
 
     fig, ax = plt.subplots()
