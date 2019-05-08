@@ -106,6 +106,13 @@ class Sensor:
         self._veloc = self._ax.arrow(x, y, *b, width=100, color="b")
 
 
+class KalmanFilter:
+    def __init__(self, sensor, sigma):
+        self.sensor = sensor
+        self.sigma = sigma
+        self._r = self.sigma**2 * np.eye(2)
+
+
 def main():
     sensor = Sensor()
     frames = sensor.truth.space
