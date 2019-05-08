@@ -107,7 +107,7 @@ class Sensor:
 
 
 def main():
-    sensor = Sensor(500)
+    sensor = Sensor()
     frames = sensor.truth.space
 
     fig, ax = plt.subplots()
