@@ -22,12 +22,10 @@ class GroundTruth:
         return self.a * np.vstack([self._x(t), self._y(t)])
 
     def velocity(self, t):
-        return -self.q * np.array([[ sin(self.w * t) / 4 ],
-                                   [ sin(2 * self.w * t) ]])
+        return -self.q * np.vstack([sin(self.w * t) / 4, sin(2 * self.w * t)])
 
     def acceleration(self, t):
-        return self.v * np.array([[ cos(self.w * t) / 2 ],
-                                  [ cos(2 * self.w * t) ]])
+        return self.v * np.vstack([cos(self.w * t) / 2, cos(2 * self.w * t)])
 
     def x(self, t):
         return np.vstack([self.trajectory(t), self.velocity(t), self.acceleration(t)])
@@ -76,10 +74,35 @@ class KalmanFilter:
         self.sensors = sensors
         self.matrix = matrix
 
-    def prediction(self, t):
-        pass
+        self.prev_t = 0
+        self.prev_estimate = np.zeros((4, 1))
+        self.prev_error = np.zeros((4, 4))
 
-    def filtering(self, measurement):
+    def F(self, k):
+        delta = k - self.prev_t
+        return np.array([[1, 0, delta, 0],
+                         [0, 1, 0, delta],
+                         [0, 0, 1,     0],
+                         [0, 0, 0,     1]])
+
+    def D(self, k):
+        delta = k - self.prev_t
+        delta4 = delta ** 4 / 4
+        delta3 = delta ** 3 / 2
+        delta2 = delta ** 2
+        error = np.array([[delta4, 0, delta3, 0],
+                          [0, delta4, 0, delta3],
+                          [delta3, 0, delta2, 0],
+                          [0, delta3, 0, delta2]])
+        return error
+
+    def prediction(self, t):
+        transition = self.F(t)
+        estimate = transition @ self.prev_estimate
+        ignorance = transition @ self.prev_error @ transition.T + self.D(t)
+        return estimate, ignorance
+
+    def filtering(self, t, measurement):
         pass
 
 
@@ -88,8 +111,9 @@ def main():
     filter = KalmanFilter([sensor])
     for t in sensor.truth.space:
         measure = sensor.measure(t)
-        print(t, "\n", measure)
-        print(sensor.H @ measure)
+        filter.prediction(t)
+        print("Time: ", t)
+        print("\nMeasure:\n", measure)
         print("----")
 
 
