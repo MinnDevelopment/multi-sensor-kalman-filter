@@ -1,5 +1,3 @@
-from threading import Timer
-
 import numpy as np
 from numpy import sin, cos, pi, sqrt
 from numpy.random import standard_normal, normal
@@ -21,8 +19,7 @@ class GroundTruth:
         return sin(2 * self.w * t)
 
     def trajectory(self, t):
-        return self.a * np.array([[ self._x(t) ],
-                                  [ self._y(t) ]])
+        return self.a * np.vstack([self._x(t), self._y(t)])
 
     def velocity(self, t):
         return -self.q * np.array([[ sin(self.w * t) / 4 ],
@@ -36,59 +33,64 @@ class GroundTruth:
         return np.vstack([self.trajectory(t), self.velocity(t), self.acceleration(t)])
 
 
-class GenericSensor:
-    def __init__(self, sigma=50, interval=5):
-        self.truth = GroundTruth(300, 9)
-        self.sigma = sigma
-        self.interval = interval
-        self.real_point = None
-        self._traj_timer = None
-
-    def __schedule(self, fn):
-        timer = Timer(self.interval, fn)
-        timer.start()
-        return timer
-
-    def reset(self):
-        if self._traj_timer:
-            self._traj_timer.cancel()
-
-    def on_trajectory(self, callback, at):
-        def runner():
-            callback(self.get_trajectory_data(at()))
-        if self._traj_timer:
-            self._traj_timer.cancel()
-        self._traj_timer = self.__schedule(runner)
-
-    def get_error(self):
-        return self.sigma * standard_normal((2, 1))
-
-    def get_trajectory_data(self, t):
-        return self.truth.trajectory(t) + self.get_error()
-
-
 class PositionalSensor:
-    def __init__(self, pos, sigma_range=20, sigma_azimuth=0.2):
+    def __init__(self, pos, sigma=50, sigma_range=20, sigma_azimuth=0.2):
         self.truth = GroundTruth()
         self.pos = pos
+        self.sigma = sigma
         self.sigma_range = sigma_range
         self.sigma_azimuth = sigma_azimuth
 
-    def get_error(self):
-        return np.array([self.sigma_range * normal(),
-                         self.sigma_azimuth * normal()]).T
+    @property
+    def H(self):
+        return np.array([[1., 0], [0, 1], [0, 0], [0, 0]]).T
 
-    def get_range_azimuth(self, t):
+    def get_range_error(self):
+        return np.vstack([self.sigma_range * normal(),
+                          self.sigma_azimuth * normal()])
+
+    def get_trajectory_error(self):
+        return self.sigma * standard_normal((2, 1))
+
+    def get_velocity(self, t):
+        return self.truth.velocity(t)
+
+    def get_trajectory_data(self, t):
+        error = self.get_trajectory_error()
+        trajectory = self.truth.trajectory(t)
+        return trajectory + error
+
+    def get_range_azimuth_data(self, t):
         (x_real, y_real) = self.truth.trajectory(t).flatten()
         (x_sensor, y_sensor) = self.pos
         new_x = sqrt((x_real - x_sensor)**2 + (y_real - y_sensor)**2)
         new_y = np.arctan((y_real - y_sensor) / (x_real - x_sensor))
         return np.array([new_x, new_y]).T
 
+    def measure(self, t):
+        return np.vstack((self.get_trajectory_data(t), self.get_velocity(t)))
+
+
+class KalmanFilter:
+    def __init__(self, sensors, matrix=50**2 * np.diag((1, 1))):
+        self.sensors = sensors
+        self.matrix = matrix
+
+    def prediction(self, t):
+        pass
+
+    def filtering(self, measurement):
+        pass
 
 
 def main():
-    print(PositionalSensor((0, 0)).get_range_azimuth(100))
+    sensor = PositionalSensor((0, 0))
+    filter = KalmanFilter([sensor])
+    for t in sensor.truth.space:
+        measure = sensor.measure(t)
+        print(t, "\n", measure)
+        print(sensor.H @ measure)
+        print("----")
 
 
 if __name__ == '__main__':
