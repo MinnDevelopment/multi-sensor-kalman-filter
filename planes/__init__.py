@@ -70,13 +70,10 @@ class PositionalSensor:
 
 
 class KalmanFilter:
-    def __init__(self, sensors, matrix=50**2 * np.diag((1, 1))):
-        self.sensors = sensors
-        self.matrix = matrix
-
+    def __init__(self):
         self.prev_t = 0
         self.prev_estimate = np.zeros((4, 1))
-        self.prev_error = np.zeros((4, 4))
+        self.prev_ignorance = np.eye(4)
 
     def F(self, k):
         delta = k - self.prev_t
@@ -99,22 +96,36 @@ class KalmanFilter:
     def prediction(self, t):
         transition = self.F(t)
         estimate = transition @ self.prev_estimate
-        ignorance = transition @ self.prev_error @ transition.T + self.D(t)
+        ignorance = transition @ self.prev_ignorance @ transition.T + self.D(t)
         return estimate, ignorance
 
-    def filtering(self, t, measurement):
-        pass
+    def filtering(self, t, measurement, H, R):
+        estimate, ignorance = self.prediction(t)
+        v = measurement - H @ estimate
+        gain = H @ ignorance @ H.T + R
+
+        W = ignorance @ H.T @ np.linalg.inv(gain)
+
+        self.prev_estimate = estimate + W @ v
+        self.prev_ignorance = ignorance - W @ gain @ W.T
 
 
 def main():
     sensor = PositionalSensor((0, 0))
-    filter = KalmanFilter([sensor])
+    filter = KalmanFilter()
+    count = 0
+    R = 2500 * np.diag([1, 1])
     for t in sensor.truth.space:
-        measure = sensor.measure(t)
-        filter.prediction(t)
-        print("Time: ", t)
-        print("\nMeasure:\n", measure)
-        print("----")
+        count += 1
+        if count % 5 == 0:
+            print("Filtering...")
+            filter.filtering(t, sensor.get_trajectory_data(t), sensor.H, R)
+        print("Actual:\n")
+        print(sensor.truth.trajectory(t))
+        print("Prediction:\n")
+        prediction, _ = filter.prediction(t)
+        print(prediction)
+        print("============\n")
 
 
 if __name__ == '__main__':
