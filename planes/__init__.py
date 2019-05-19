@@ -74,6 +74,7 @@ class KalmanFilter:
         self.prev_t = 0
         self.prev_estimate = np.zeros((4, 1))
         self.prev_ignorance = np.eye(4)
+        self.t = 0
 
     def F(self, k):
         delta = k - self.prev_t
@@ -93,14 +94,15 @@ class KalmanFilter:
                           [0, delta3, 0, delta2]])
         return error
 
-    def prediction(self, t):
-        transition = self.F(t)
+    def prediction(self):
+        transition = self.F(self.t)
         estimate = transition @ self.prev_estimate
-        ignorance = transition @ self.prev_ignorance @ transition.T + self.D(t)
+        ignorance = transition @ self.prev_ignorance @ transition.T + self.D(self.t)
+        self.t += 1
         return estimate, ignorance
 
-    def filtering(self, t, measurement, H, R):
-        estimate, ignorance = self.prediction(t)
+    def filtering(self, measurement, H, R):
+        estimate, ignorance = self.prediction()
         v = measurement - H @ estimate
         gain = H @ ignorance @ H.T + R
 
@@ -108,6 +110,7 @@ class KalmanFilter:
 
         self.prev_estimate = estimate + W @ v
         self.prev_ignorance = ignorance - W @ gain @ W.T
+        self.prev_t = self.t
 
 
 def main():
@@ -119,11 +122,11 @@ def main():
         count += 1
         if count % 5 == 0:
             print("Filtering...")
-            filter.filtering(t, sensor.get_trajectory_data(t), sensor.H, R)
+            filter.filtering(sensor.get_trajectory_data(t), sensor.H, R)
         print("Actual:\n")
         print(sensor.truth.trajectory(t))
         print("Prediction:\n")
-        prediction, _ = filter.prediction(t)
+        prediction, _ = filter.prediction()
         print(prediction)
         print("============\n")
 
