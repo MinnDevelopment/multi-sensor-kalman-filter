@@ -76,15 +76,17 @@ class KalmanFilter:
         self.prev_ignorance = np.eye(4)
         self.t = 0
 
-    def F(self, k):
-        delta = k - self.prev_t
+    @property
+    def F(self):
+        delta = self.t - self.prev_t
         return np.array([[1, 0, delta, 0],
                          [0, 1, 0, delta],
                          [0, 0, 1,     0],
                          [0, 0, 0,     1]])
 
-    def D(self, k):
-        delta = k - self.prev_t
+    @property
+    def D(self):
+        delta = self.t - self.prev_t
         delta4 = delta ** 4 / 4
         delta3 = delta ** 3 / 2
         delta2 = delta ** 2
@@ -95,9 +97,9 @@ class KalmanFilter:
         return error
 
     def prediction(self):
-        transition = self.F(self.t)
+        transition = self.F
         estimate = transition @ self.prev_estimate
-        ignorance = transition @ self.prev_ignorance @ transition.T + self.D(self.t)
+        ignorance = transition @ self.prev_ignorance @ transition.T + self.D
         self.t += 1
         return estimate, ignorance
 
