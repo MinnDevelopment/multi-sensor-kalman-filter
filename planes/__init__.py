@@ -35,7 +35,7 @@ class GroundTruth:
     def x(self, t):
         return np.vstack([self.trajectory(t), self.velocity(t), self.acceleration(t)])
 
-
+# split into radar and cartesian
 class PositionalSensor:
     def __init__(self, pos, sigma=50, sigma_range=20, sigma_azimuth=0.2):
         self.truth = GroundTruth()
@@ -93,6 +93,7 @@ class KalmanFilter:
         self.prev_ignorance = np.eye(4)
         self.t = 0
 
+    # move into sensor, different for radar?
     @property
     def F(self):
         delta = self.t - self.prev_t
@@ -136,6 +137,7 @@ def main():
     sensor = PositionalSensor((0, 0))
     filter = KalmanFilter()
     count = 0
+    # different for radar, move into sensor?
     R = 2500 * np.diag([1, 1])
     for t in sensor.truth.space:
         count += 1
