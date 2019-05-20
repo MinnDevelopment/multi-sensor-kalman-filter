@@ -48,22 +48,22 @@ class PositionalSensor:
     def H(self):
         return np.array([[1., 0], [0, 1], [0, 0], [0, 0]]).T
 
-    def get_range_error(self):
+    def get_radar_error(self):
         return np.vstack([self.sigma_range * normal(),
                           self.sigma_azimuth * normal()])
 
-    def get_trajectory_error(self):
+    def get_cartesian_error(self):
         return self.sigma * standard_normal((2, 1))
 
     def get_velocity(self, t):
         return self.truth.velocity(t)
 
-    def get_trajectory_data(self, t):
-        error = self.get_trajectory_error()
+    def get_cartesian(self, t):
+        error = self.get_cartesian_error()
         trajectory = self.truth.trajectory(t)
         return trajectory + error
 
-    def get_range_azimuth_data(self, t):
+    def get_radar(self, t):
         (x_real, y_real) = self.truth.trajectory(t).flatten()
         (x_sensor, y_sensor) = self.pos
         new_x = sqrt((x_real - x_sensor)**2 + (y_real - y_sensor)**2)
@@ -73,17 +73,17 @@ class PositionalSensor:
         # -x, -y = + pi
         # +x, -y = + 2pi
         if x_real == x_sensor and y_real == y_sensor:
-            return np.vstack([new_x, 0]) + self.get_range_error()
+            return np.vstack([new_x, 0]) + self.get_radar_error()
         new_y = np.arctan((y_real - y_sensor) / (x_real - x_sensor))
         if x_real >= x_sensor:
             if y_real < y_sensor:
                 new_y += 2 * pi
         else:
             new_y += pi
-        return np.vstack([new_x, new_y]) + self.get_range_error()
+        return np.vstack([new_x, new_y]) + self.get_radar_error()
 
     def measure(self, t):
-        return np.vstack((self.get_trajectory_data(t), self.get_velocity(t)))
+        return np.vstack((self.get_cartesian(t), self.get_velocity(t)))
 
 
 class KalmanFilter:
@@ -141,7 +141,7 @@ def main():
         count += 1
         if count % 5 == 0:
             print("Filtering...")
-            radar_data = sensor.get_range_azimuth_data(t).flatten()
+            radar_data = sensor.get_radar(t).flatten()
             cartesian_data = radar_to_cartesian(*radar_data)
             filter.filtering(cartesian_data, sensor.H, R)
         print("Actual:\n")
