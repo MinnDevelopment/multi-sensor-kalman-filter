@@ -3,6 +3,11 @@ from numpy import sin, cos, pi, sqrt
 from numpy.random import standard_normal, normal
 
 
+def radar_to_cartesian(r, angle):
+    # derived from euler identity
+    return np.vstack([r * cos(angle), r * sin(angle)])
+
+
 class GroundTruth:
     def __init__(self, v=300, q=9, rounds=1):
         self.v = v
@@ -62,8 +67,20 @@ class PositionalSensor:
         (x_real, y_real) = self.truth.trajectory(t).flatten()
         (x_sensor, y_sensor) = self.pos
         new_x = sqrt((x_real - x_sensor)**2 + (y_real - y_sensor)**2)
+        # arctan changes for 4 sectors of cartesian coordinates
+        # +x, +y = + 0
+        # -x, +y = + pi
+        # -x, -y = + pi
+        # +x, -y = + 2pi
+        if x_real == x_sensor and y_real == y_sensor:
+            return np.vstack([new_x, 0]) + self.get_range_error()
         new_y = np.arctan((y_real - y_sensor) / (x_real - x_sensor))
-        return np.array([new_x, new_y]).T
+        if x_real >= x_sensor:
+            if y_real < y_sensor:
+                new_y += 2 * pi
+        else:
+            new_y += pi
+        return np.vstack([new_x, new_y]) + self.get_range_error()
 
     def measure(self, t):
         return np.vstack((self.get_trajectory_data(t), self.get_velocity(t)))
@@ -124,7 +141,9 @@ def main():
         count += 1
         if count % 5 == 0:
             print("Filtering...")
-            filter.filtering(sensor.get_trajectory_data(t), sensor.H, R)
+            radar_data = sensor.get_range_azimuth_data(t).flatten()
+            cartesian_data = radar_to_cartesian(*radar_data)
+            filter.filtering(cartesian_data, sensor.H, R)
         print("Actual:\n")
         print(sensor.truth.trajectory(t))
         print("Prediction:\n")
