@@ -49,7 +49,7 @@ class GridSensor:
         return self.truth.velocity(t)
 
     def measure(self, t):
-        return np.vstack([self.trajectory(t), self.velocity(t)])
+        return self.trajectory(t)
 
 
 class RadarSensor:
@@ -114,9 +114,9 @@ class RadarSensor:
         return np.vstack([new_x, new_y]) + self.__error
 
     def measure_cartesian(self, t):
-        r, a, _, _ = self.measure(t)
+        r, a = self.measure(t)
         return r * np.vstack([cos(a), sin(a)])
 
     def measure(self, t):
-        return np.vstack([self.radar(t), self.velocity(t)])
+        return self.radar(t)
 

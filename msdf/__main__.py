@@ -42,7 +42,7 @@ def main():
             print("Filtering...")
             H = sensor.H
             R = sensor.R
-            pred, _ = filter.filtering(H @ sensor.measure(t), F, D, H, R)
+            pred, _ = filter.filtering(sensor.measure(t), F, D, H, R)
         else:
             pred, _ = filter.prediction(F, D)
         print("Real: ", sensor.truth.trajectory(t).flatten())
