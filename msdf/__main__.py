@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.linalg import inv
 
-from msdf.sensors import GridSensor
+from msdf.sensors import RadarSensor
 
 
 class KalmanFilter:
@@ -32,7 +32,7 @@ class KalmanFilter:
 
 
 def main():
-    sensor = GridSensor()
+    sensor = RadarSensor((0, 0))
     filter = KalmanFilter()
 
     for t in sensor.truth.space:
@@ -41,8 +41,8 @@ def main():
         if filter.t % 5 == 0:
             print("Filtering...")
             H = sensor.H
-            R = sensor.R
-            pred, _ = filter.filtering(sensor.measure(t), F, D, H, R)
+            R, z = sensor.measure(t)
+            pred, _ = filter.filtering(z, F, D, H, R)
         else:
             pred, _ = filter.prediction(F, D)
         print("Real: ", sensor.truth.trajectory(t).flatten())

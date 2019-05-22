@@ -49,13 +49,13 @@ class GridSensor:
         return self.truth.velocity(t)
 
     def measure(self, t):
-        return self.trajectory(t)
+        return self.R, self.trajectory(t)
 
 
 class RadarSensor:
     def __init__(self, pos, sigma_range=20, sigma_azimuth=0.2):
         self.truth = GroundTruth()
-        self.pos = pos
+        self.pos = np.vstack(pos)
         self.sigma_range = sigma_range
         self.sigma_azimuth = sigma_azimuth
 
@@ -74,7 +74,6 @@ class RadarSensor:
                          [0, 0, 1,     0],
                          [0, 0, 0,     1]])
 
-    # TODO: Change this
     def D(self, t, prev):
         delta = t - prev
         delta4 = delta ** 4 / 4
@@ -96,27 +95,39 @@ class RadarSensor:
 
     def radar(self, t):
         (x_real, y_real) = self.truth.trajectory(t).flatten()
-        (x_sensor, y_sensor) = self.pos
-        new_x = sqrt((x_real - x_sensor)**2 + (y_real - y_sensor)**2)
+        (x_sensor, y_sensor) = self.pos.flatten()
+        r = sqrt((x_real - x_sensor)**2 + (y_real - y_sensor)**2)
         # arctan changes for 4 sectors of cartesian coordinates
         # +x, +y = + 0
         # -x, +y = + pi
         # -x, -y = + pi
         # +x, -y = + 2pi
         if x_real == x_sensor and y_real == y_sensor:
-            return np.vstack([new_x, 0]) + self.__error
-        new_y = np.arctan((y_real - y_sensor) / (x_real - x_sensor))
+            return np.vstack([r, 0]) + self.__error
+        phi = np.arctan((y_real - y_sensor) / (x_real - x_sensor))
         if x_real >= x_sensor:
             if y_real < y_sensor:
-                new_y += 2 * pi
+                phi += 2 * pi
         else:
-            new_y += pi
-        return np.vstack([new_x, new_y]) + self.__error
+            phi += pi
+        return np.vstack([r, phi]) + self.__error
 
-    def measure_cartesian(self, t):
-        r, a = self.measure(t)
-        return r * np.vstack([cos(a), sin(a)])
+    def cartesian(self, phi, r):
+        return r * np.vstack([cos(phi), sin(phi)]) + self.pos
+
+    def rotation(self, phi):
+        return np.array([[cos(phi), -sin(phi)],
+                         [sin(phi),  cos(phi)]])
+
+    def dilation(self, r):
+        return np.array([[1, 0],
+                         [0, r]])
 
     def measure(self, t):
-        return self.radar(t)
+        r, phi = self.radar(t).flatten()
+        cartesian = self.cartesian(phi, r)
+        D = self.rotation(phi)
+        S = self.dilation(r)
+        R = D @ S @ self.R @ S.T @ D.T
+        return self.R, cartesian
 
