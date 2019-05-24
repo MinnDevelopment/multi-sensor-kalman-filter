@@ -3,7 +3,7 @@ from numpy import sin, cos, pi
 
 
 class GroundTruth:
-    def __init__(self, v=300, q=9, rounds=2):
+    def __init__(self, v=300, q=9, rounds=1):
         self.v = v
         self.q = q
         self.w = q / 2*v
