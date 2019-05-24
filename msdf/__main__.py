@@ -7,7 +7,7 @@ from msdf.sensors import RadarSensor
 class KalmanFilter:
     def __init__(self):
         self.prev_estimate = np.zeros((4, 1))
-        self.prev_ignorance = np.eye(4)
+        self.prev_ignorance = 1e3 * np.eye(4)
         self.prev_t = 0
         self.t = 0
 
@@ -36,16 +36,21 @@ def main():
     filter = KalmanFilter()
 
     for t in sensor.truth.space:
+        delta = filter.t - filter.prev_t
         F = sensor.F(filter.t, filter.prev_t)
         D = sensor.D(filter.t, filter.prev_t)
-        if filter.t % 5 == 0:
+        H = sensor.H
+        R, z = sensor.measure(t)
+        real = sensor.truth.trajectory(t).flatten()
+
+        if delta >= 5:
             print("Filtering...")
-            H = sensor.H
-            R, z = sensor.measure(t)
             pred, _ = filter.filtering(z, F, D, H, R)
         else:
             pred, _ = filter.prediction(F, D)
-        print("Real: ", sensor.truth.trajectory(t).flatten())
+
+        print("Measured: ", z.flatten())
+        print("Real: ", real)
         print("Pred: ", pred.flatten()[0:2])
         print()
     return 0

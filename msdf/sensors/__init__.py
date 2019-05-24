@@ -83,7 +83,7 @@ class RadarSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return error
+        return 3 * error
 
     @property
     def __error(self):
@@ -93,24 +93,27 @@ class RadarSensor:
     def velocity(self, t):
         return self.truth.velocity(t)
 
-    def radar(self, t):
-        (x_real, y_real) = self.truth.trajectory(t).flatten()
+    def into_radar(self, x, y):
         (x_sensor, y_sensor) = self.pos.flatten()
-        r = sqrt((x_real - x_sensor)**2 + (y_real - y_sensor)**2)
+        r = sqrt((x - x_sensor) ** 2 + (y - y_sensor) ** 2)
         # arctan changes for 4 sectors of cartesian coordinates
         # +x, +y = + 0
         # -x, +y = + pi
         # -x, -y = + pi
         # +x, -y = + 2pi
-        if x_real == x_sensor and y_real == y_sensor:
+        if x == x_sensor and y == y_sensor:
             return np.vstack([r, 0]) + self.__error
-        phi = np.arctan((y_real - y_sensor) / (x_real - x_sensor))
-        if x_real >= x_sensor:
-            if y_real < y_sensor:
+        phi = np.arctan((y - y_sensor) / (x - x_sensor))
+        if x >= x_sensor:
+            if y < y_sensor:
                 phi += 2 * pi
         else:
             phi += pi
-        return np.vstack([r, phi]) + self.__error
+        return np.vstack([r, phi])
+
+    def radar(self, t):
+        x, y = self.truth.trajectory(t).flatten()
+        return self.into_radar(x, y) + self.__error
 
     def cartesian(self, phi, r):
         return r * np.vstack([cos(phi), sin(phi)]) + self.pos
@@ -129,5 +132,5 @@ class RadarSensor:
         D = self.rotation(phi)
         S = self.dilation(r)
         R = D @ S @ self.R @ S.T @ D.T
-        return self.R, cartesian
+        return R, cartesian
 
