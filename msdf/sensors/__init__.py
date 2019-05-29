@@ -20,15 +20,13 @@ class GridSensor:
     def R(self):
         return self.sigma**2 * np.diag([1, 1])
 
-    def F(self, t, prev):
-        delta = t - prev
+    def F(self, delta):
         return np.array([[1, 0, delta, 0],
                          [0, 1, 0, delta],
                          [0, 0, 1,     0],
                          [0, 0, 0,     1]])
 
-    def D(self, t, prev):
-        delta = t - prev
+    def D(self, delta):
         delta4 = delta ** 4 / 4
         delta3 = delta ** 3 / 2
         delta2 = delta ** 2
@@ -36,7 +34,7 @@ class GridSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return error
+        return 500 * error
 
     @property
     def __error(self):
@@ -61,21 +59,20 @@ class RadarSensor:
 
     @property
     def H(self):
-        return np.array([[1., 0], [0, 1], [0, 0], [0, 0]]).T
+        return np.array([[1., 0, 0, 0],
+                         [0,  1, 0, 0]])
 
     @property
     def R(self):
         return np.diag([self.sigma_range**2, self.sigma_azimuth**2])
 
-    def F(self, t, prev):
-        delta = t - prev
+    def F(self, delta):
         return np.array([[1, 0, delta, 0],
                          [0, 1, 0, delta],
                          [0, 0, 1,     0],
                          [0, 0, 0,     1]])
 
-    def D(self, t, prev):
-        delta = t - prev
+    def D(self, delta):
         delta4 = delta ** 4 / 4
         delta3 = delta ** 3 / 2
         delta2 = delta ** 2
@@ -83,7 +80,7 @@ class RadarSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return error
+        return 1500 * error
 
     @property
     def __error(self):
