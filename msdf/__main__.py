@@ -1,4 +1,4 @@
-from time import time, sleep
+from time import time
 
 from numpy.linalg import inv
 
@@ -12,7 +12,7 @@ def millis():
 class KalmanFilter:
     def __init__(self):
         self.prev_estimate = np.zeros((4, 1))
-        self.prev_ignorance = 1e3 * np.eye(4)
+        self.prev_ignorance = 500 * np.eye(4)
         self.predictions = []
         self.prev_time = millis()
 
@@ -31,11 +31,11 @@ class KalmanFilter:
     def filtering(self, measurement, prediction, H, R):
         estimate, ignorance = prediction
         innovation = measurement - H @ estimate
-        error = H @ ignorance @ H.T + R
-        gain = ignorance @ H.T @ inv(error)
+        innovation_error = H @ ignorance @ H.T + R
+        gain = ignorance @ H.T @ inv(innovation_error)
 
         self.prev_estimate = estimate + gain @ innovation
-        self.prev_ignorance = ignorance - gain @ error @ gain.T
+        self.prev_ignorance = ignorance - gain @ innovation_error @ gain.T
         self.prev_time = millis()
         result = (self.prev_estimate, self.prev_ignorance)
         self.predictions.pop()
@@ -44,11 +44,13 @@ class KalmanFilter:
 
 
 def main():
-    sensor = RadarSensor((0, 0))
-#    sensor = GridSensor()
+    position = (0, 6000)
+    sensor = RadarSensor(position)
+    # sensor = GridSensor(sigma=100)
     kalman = KalmanFilter()
     space = sensor.truth.space
 
+    measurements = []
     predictions = []
     for t in space:
         delta = kalman.get_delta()
@@ -59,6 +61,7 @@ def main():
         pred, P = kalman.prediction(F, D)
         estimate = pred.flatten()[0:2]
         R, z = sensor.measure(t)
+        measurements.append(z)
 
         if delta >= 5:
             filtered = True
@@ -72,8 +75,10 @@ def main():
         print("Measured: ", z.flatten())
         print("Real: ", real)
         print("Pred: ", estimate)
+        print("R:")
+        print(R)
         print()
-        sleep(0.001)
+        # sleep(0.001)
 
     import matplotlib.pyplot as plt
 
@@ -81,14 +86,24 @@ def main():
     x = [v[0] for v in track]
     y = [v[1] for v in track]
     plt.plot(x, y, color="k", alpha=0.5)
+    x = [v[0] for v in measurements]
+    y = [v[1] for v in measurements]
+    plt.plot(x, y, "b")
+    plt.plot(*position, "ko")
+    plt.show()
+    track = [sensor.truth.trajectory(t).flatten() for t in space]
+    x = [v[0] for v in track]
+    y = [v[1] for v in track]
+    plt.plot(x, y, color="k", alpha=0.5)
     preds = [v[0] for v in predictions if not v[1]]
     x = [v[0] for v in preds]
     y = [v[1] for v in preds]
-    plt.plot(x, y, "ro")
+    plt.plot(x, y, "r")
     preds = [v[0] for v in predictions if v[1]]
     x = [v[0] for v in preds]
     y = [v[1] for v in preds]
     plt.plot(x, y, "go")
+    plt.plot(*position, "ko")
     plt.show()
     return 0
 

@@ -80,7 +80,7 @@ class RadarSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return 2000 * error
+        return error
 
     @property
     def __error(self):
@@ -115,14 +115,17 @@ class RadarSensor:
     def radar(self, t):
         return self.radar_truth(t) + self.__error
 
-    def cartesian(self, phi, r):
+    @staticmethod
+    def cartesian(phi, r):
         return r * np.vstack([cos(phi), sin(phi)])
 
-    def rotation(self, phi):
+    @staticmethod
+    def rotation(phi):
         return np.array([[cos(phi), -sin(phi)],
                          [sin(phi),  cos(phi)]])
 
-    def dilation(self, r):
+    @staticmethod
+    def dilation(r):
         return np.array([[1, 0],
                          [0, r]])
 
