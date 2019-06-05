@@ -81,7 +81,7 @@ class RadarSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return error
+        return 1500 * error
 
     @property
     def __error(self):
@@ -100,7 +100,7 @@ class RadarSensor:
         # -x, +y = + pi
         # -x, -y = + pi
         # +x, -y = + 2pi
-        if x == x_sensor and y == y_sensor:
+        if x == x_sensor:
             return np.vstack([r, 0])
         phi = np.arctan((y - y_sensor) / (x - x_sensor))
         if x >= x_sensor:

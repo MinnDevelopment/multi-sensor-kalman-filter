@@ -44,6 +44,8 @@ class KalmanFilter:
 def main():
     sensors = []
 
+    position = (0, 0)
+    sensors.append(RadarSensor(position))
     position = (0, 6000)
     sensors.append(RadarSensor(position))
     position = (6000, 0)
