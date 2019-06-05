@@ -1,7 +1,5 @@
 from time import time
 
-from numpy.linalg import inv
-
 from msdf.sensors import *
 
 
@@ -44,8 +42,19 @@ class KalmanFilter:
 
 
 def main():
+    sensors = []
+
     position = (0, 6000)
-    sensor = RadarSensor(position)
+    sensors.append(RadarSensor(position))
+    position = (6000, 0)
+    sensors.append(RadarSensor(position))
+    position = (0, -6000)
+    sensors.append(RadarSensor(position))
+    position = (-6000, 0)
+    sensors.append(RadarSensor(position))
+
+    sensor = MergedSensor(sensors)
+
     # sensor = GridSensor(sigma=100)
     kalman = KalmanFilter()
     space = sensor.truth.space
@@ -89,7 +98,8 @@ def main():
     x = [v[0] for v in measurements]
     y = [v[1] for v in measurements]
     plt.plot(x, y, "b")
-    plt.plot(*position, "ko")
+    for s in sensors:
+        plt.plot(*s.pos, "ko")
     plt.show()
     track = [sensor.truth.trajectory(t).flatten() for t in space]
     x = [v[0] for v in track]
@@ -103,7 +113,8 @@ def main():
     x = [v[0] for v in preds]
     y = [v[1] for v in preds]
     plt.plot(x, y, "go")
-    plt.plot(*position, "ko")
+    for s in sensors:
+        plt.plot(*s.pos, "ko")
     plt.show()
     return 0
 

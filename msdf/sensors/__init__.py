@@ -1,6 +1,7 @@
 
 import numpy as np
 from numpy import sqrt, pi, cos, sin
+from numpy.linalg import inv
 from numpy.random import normal, standard_normal
 
 from msdf.truth import GroundTruth
@@ -140,24 +141,32 @@ class RadarSensor:
         return R, cartesian + self.pos
 
 
-# TODO: Figure this sh*t out
 class MergedSensor:
     def __init__(self, sensors):
         self.sensors = sensors
 
     @property
-    def H(self):
-        return np.vstack([s.H for s in self.sensors])
+    def truth(self):
+        return self.sensors[0].truth
 
-    def F(self, t, prev):
-        delta = t - prev
+    @property
+    def H(self):
+        return np.array([[1., 0, 0, 0],
+                         [0, 1, 0, 0]])
+
+    def R(self, matrices):
+        sigma = np.zeros((2, 2))
+        for m in matrices:
+            sigma += inv(m)
+        return inv(sigma)
+
+    def F(self, delta):
         return np.array([[1, 0, delta, 0],
                          [0, 1, 0, delta],
                          [0, 0, 1,     0],
                          [0, 0, 0,     1]])
 
-    def D(self, t, prev):
-        delta = t - prev
+    def D(self, delta):
         delta4 = delta ** 4 / 4
         delta3 = delta ** 3 / 2
         delta2 = delta ** 2
@@ -169,6 +178,8 @@ class MergedSensor:
 
     def measure(self, t):
         measurements = [s.measure(t) for s in self.sensors]
-        R = np.diagflat([z[0] for z in measurements])
-        Z = [z[1] for z in measurements]
-        return R, Z
+        R = self.R([z[0] for z in measurements])
+        Z = np.zeros((2, 1))
+        for m in measurements:
+            Z += inv(m[0]) @ m[1]
+        return R, R @ Z
