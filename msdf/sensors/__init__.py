@@ -7,19 +7,16 @@ from numpy.random import normal, standard_normal
 from msdf.truth import GroundTruth
 
 
-class GridSensor:
-    def __init__(self, sigma=50):
-        self.truth = GroundTruth()
-        self.sigma = sigma
+class Sensor:
+    __slots__ = 'truth'
+
+    def get_positions(self):
+        raise NotImplementedError
 
     @property
     def H(self):
         return np.array([[1., 0, 0, 0],
                          [0,  1, 0, 0]])
-
-    @property
-    def R(self):
-        return self.sigma**2 * np.diag([1, 1])
 
     def F(self, delta):
         return np.array([[1, 0, delta, 0],
@@ -35,7 +32,22 @@ class GridSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return 500 * error
+        return 5 * error
+
+    def measure(self, t):
+        raise NotImplementedError
+
+
+class GridSensor(Sensor):
+    def __init__(self, sigma=50):
+        self.sigma = sigma
+
+    def get_positions(self):
+        return None
+
+    @property
+    def R(self):
+        return self.sigma**2 * np.diag([1, 1])
 
     @property
     def __error(self):
@@ -44,52 +56,28 @@ class GridSensor:
     def trajectory(self, t):
         return self.truth.trajectory(t) + self.__error
 
-    def velocity(self, t):
-        return self.truth.velocity(t)
-
     def measure(self, t):
-        return self.R, self.trajectory(t)
+        return self.trajectory(t), self.R
 
 
-class RadarSensor:
+class RadarSensor(Sensor):
     def __init__(self, pos, sigma_range=20, sigma_azimuth=0.2):
         self.truth = GroundTruth()
         self.pos = np.vstack(pos)
         self.sigma_range = sigma_range
         self.sigma_azimuth = sigma_azimuth
 
-    @property
-    def H(self):
-        return np.array([[1., 0, 0, 0],
-                         [0,  1, 0, 0]])
+    def get_positions(self):
+        return [self.pos]
 
     @property
     def R(self):
         return np.diag([self.sigma_range**2, self.sigma_azimuth**2])
 
-    def F(self, delta):
-        return np.array([[1, 0, delta, 0],
-                         [0, 1, 0, delta],
-                         [0, 0, 1,     0],
-                         [0, 0, 0,     1]])
-
-    def D(self, delta):
-        delta4 = delta ** 4 / 4
-        delta3 = delta ** 3 / 2
-        delta2 = delta ** 2
-        error = np.array([[delta4, 0, delta3, 0],
-                          [0, delta4, 0, delta3],
-                          [delta3, 0, delta2, 0],
-                          [0, delta3, 0, delta2]])
-        return 1500 * error
-
     @property
     def __error(self):
         return np.vstack([self.sigma_range * normal(),
                           self.sigma_azimuth * normal()])
-
-    def velocity(self, t):
-        return self.truth.velocity(t)
 
     def into_radar(self, vec):
         x, y = vec
@@ -100,7 +88,7 @@ class RadarSensor:
         # -x, +y = + pi
         # -x, -y = + pi
         # +x, -y = + 2pi
-        if x == x_sensor:
+        if x == x_sensor and y == y_sensor:
             return np.vstack([r, 0])
         phi = np.arctan((y - y_sensor) / (x - x_sensor))
         if x >= x_sensor:
@@ -111,13 +99,17 @@ class RadarSensor:
         return np.vstack([r, phi])
 
     def radar_truth(self, t):
-        return self.into_radar(self.truth.trajectory(t).flatten())
+        trajectory = self.truth.trajectory(t)
+        radar = self.into_radar(trajectory.flatten())
+        return radar
 
     def radar(self, t):
-        return self.radar_truth(t) + self.__error
+        error = self.__error
+        print("Radar error", error.flatten())
+        return self.radar_truth(t) + error
 
     @staticmethod
-    def cartesian(phi, r):
+    def cartesian(r, phi):
         return r * np.vstack([cos(phi), sin(phi)])
 
     @staticmethod
@@ -137,22 +129,25 @@ class RadarSensor:
         S = self.dilation(r)
         T = D @ S
         R = T @ self.R @ T.T
-        cartesian = self.cartesian(phi, r) + T @ (self.radar_truth(t) - prediction)
-        return R, cartesian + self.pos
+        cartesian = self.cartesian(r, phi) + T @ (self.radar_truth(t) - prediction)
+        return cartesian + self.pos, R
 
 
-class MergedSensor:
+class MergedSensor(Sensor):
     def __init__(self, sensors):
         self.sensors = sensors
+
+    def get_positions(self):
+        positions = []
+        for s in self.sensors:
+            for p in s.get_positions() or []:
+                if p is not None:
+                    positions.append(p)
+        return positions
 
     @property
     def truth(self):
         return self.sensors[0].truth
-
-    @property
-    def H(self):
-        return np.array([[1., 0, 0, 0],
-                         [0, 1, 0, 0]])
 
     def R(self, matrices):
         sigma = np.zeros((2, 2))
@@ -160,26 +155,10 @@ class MergedSensor:
             sigma += inv(m)
         return inv(sigma)
 
-    def F(self, delta):
-        return np.array([[1, 0, delta, 0],
-                         [0, 1, 0, delta],
-                         [0, 0, 1,     0],
-                         [0, 0, 0,     1]])
-
-    def D(self, delta):
-        delta4 = delta ** 4 / 4
-        delta3 = delta ** 3 / 2
-        delta2 = delta ** 2
-        error = np.array([[delta4, 0, delta3, 0],
-                          [0, delta4, 0, delta3],
-                          [delta3, 0, delta2, 0],
-                          [0, delta3, 0, delta2]])
-        return error
-
     def measure(self, t):
         measurements = [s.measure(t) for s in self.sensors]
-        R = self.R([z[0] for z in measurements])
+        R = self.R([z[1] for z in measurements])
         Z = np.zeros((2, 1))
         for m in measurements:
-            Z += inv(m[0]) @ m[1]
-        return R, R @ Z
+            Z += inv(m[1]) @ m[0]
+        return R @ Z, R
