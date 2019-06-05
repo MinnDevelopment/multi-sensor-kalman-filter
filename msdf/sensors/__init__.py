@@ -80,7 +80,7 @@ class RadarSensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return 1500 * error
+        return 2000 * error
 
     @property
     def __error(self):
@@ -109,9 +109,11 @@ class RadarSensor:
             phi += pi
         return np.vstack([r, phi])
 
+    def radar_truth(self, t):
+        return self.into_radar(self.truth.trajectory(t).flatten())
+
     def radar(self, t):
-        vec = self.truth.trajectory(t).flatten()
-        return self.into_radar(vec) + self.__error
+        return self.radar_truth(t) + self.__error
 
     def cartesian(self, phi, r):
         return r * np.vstack([cos(phi), sin(phi)])
@@ -125,11 +127,13 @@ class RadarSensor:
                          [0, r]])
 
     def measure(self, t):
-        r, phi = self.radar(t).flatten()
-        cartesian = self.cartesian(phi, r)
+        prediction = self.radar(t)
+        r, phi = prediction.flatten()
         D = self.rotation(phi)
         S = self.dilation(r)
-        R = D @ S @ self.R @ S.T @ D.T
+        T = D @ S
+        R = T @ self.R @ T.T
+        cartesian = self.cartesian(phi, r) + T @ (self.radar_truth(t) - prediction)
         return R, cartesian + self.pos
 
 

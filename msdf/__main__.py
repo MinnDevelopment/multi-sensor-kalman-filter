@@ -24,7 +24,9 @@ class KalmanFilter:
         process_error = D
         estimate = transition @ self.prev_estimate
         ignorance = transition @ self.prev_ignorance @ transition.T + process_error
-        return estimate, ignorance
+        result = (estimate, ignorance)
+        self.predictions.append(result)
+        return result
 
     def filtering(self, measurement, prediction, H, R):
         estimate, ignorance = prediction
@@ -35,30 +37,33 @@ class KalmanFilter:
         self.prev_estimate = estimate + gain @ innovation
         self.prev_ignorance = ignorance - gain @ error @ gain.T
         self.prev_time = millis()
-        return self.prev_estimate, self.prev_ignorance
+        result = (self.prev_estimate, self.prev_ignorance)
+        self.predictions.pop()
+        self.predictions.append(result)
+        return result
 
 
 def main():
     sensor = RadarSensor((0, 0))
-    #sensor = GridSensor()
-    filter = KalmanFilter()
+#    sensor = GridSensor()
+    kalman = KalmanFilter()
     space = sensor.truth.space
 
     predictions = []
     for t in space:
-        delta = filter.get_delta()
+        delta = kalman.get_delta()
         F = sensor.F(delta)
         D = sensor.D(delta)
         H = sensor.H
         real = sensor.truth.trajectory(t).flatten()
-        pred, P = filter.prediction(F, D)
+        pred, P = kalman.prediction(F, D)
         estimate = pred.flatten()[0:2]
         R, z = sensor.measure(t)
 
         if delta >= 5:
             filtered = True
             print("Filtering...", delta)
-            pred, _ = filter.filtering(z, (pred, P), H, R)
+            pred, _ = kalman.filtering(z, (pred, P), H, R)
             estimate = pred.flatten()[0:2]
         else:
             filtered = False
