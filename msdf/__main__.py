@@ -121,19 +121,19 @@ def main():
     truth = GroundTruth()
     sensors = []
 
-    position = (0, 0)
-    sensor = RadarSensor(position)
-    sensor.truth = truth
-    sensors.append(sensor)
-
-    sensor = GridSensor()
-    sensor.truth = truth
-    sensors.append(sensor)
-
-    # position = (-10000, 10000)
+    # position = (0, 0)
     # sensor = RadarSensor(position)
     # sensor.truth = truth
     # sensors.append(sensor)
+
+    # sensor = GridSensor()
+    # sensor.truth = truth
+    # sensors.append(sensor)
+
+    position = (-10000, 10000)
+    sensor = RadarSensor(position)
+    sensor.truth = truth
+    sensors.append(sensor)
     # position = (-10000, -10000)
     # sensor = RadarSensor(position)
     # sensor.truth = truth
@@ -143,11 +143,11 @@ def main():
     # sensor = RadarSensor(position)
     # sensor.truth = truth
     # sensors.append(sensor)
-    # position = (10000, -10000)
-    # sensor = RadarSensor(position)
-    # sensor.truth = truth
-    # sensors.append(sensor)
-    #
+    position = (10000, -10000)
+    sensor = RadarSensor(position)
+    sensor.truth = truth
+    sensors.append(sensor)
+
     # position = (6000, 0)
     # sensor = RadarSensor(position)
     # sensor.truth = truth

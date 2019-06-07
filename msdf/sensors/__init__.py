@@ -1,7 +1,7 @@
 
 import numpy as np
 from numpy import sqrt, pi, cos, sin
-from numpy.linalg import inv
+from numpy.linalg import pinv
 from numpy.random import normal, standard_normal
 
 from msdf.truth import GroundTruth
@@ -32,7 +32,8 @@ class Sensor:
                           [0, delta4, 0, delta3],
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
-        return 5 * error
+        # Choose sigma from [4.5, 9]
+        return 6.75 * error
 
     def measure(self, t):
         raise NotImplementedError
@@ -124,12 +125,13 @@ class RadarSensor(Sensor):
 
     def measure(self, t):
         prediction = self.radar(t)
-        r, phi = prediction.flatten()
+        truth = self.radar_truth(t)
+        r, phi = truth.flatten()
         D = self.rotation(phi)
         S = self.dilation(r)
         T = D @ S
         R = T @ self.R @ T.T
-        cartesian = self.cartesian(r, phi) + T @ (self.radar_truth(t) - prediction)
+        cartesian = self.cartesian(r, phi) + T @ (prediction - truth)
         return cartesian + self.pos, R
 
 
@@ -152,13 +154,13 @@ class MergedSensor(Sensor):
     def R(self, matrices):
         sigma = np.zeros((2, 2))
         for m in matrices:
-            sigma += inv(m)
-        return inv(sigma)
+            sigma += pinv(m)
+        return pinv(sigma)
 
     def measure(self, t):
         measurements = [s.measure(t) for s in self.sensors]
         R = self.R([z[1] for z in measurements])
         Z = np.zeros((2, 1))
         for m in measurements:
-            Z += inv(m[1]) @ m[0]
+            Z += pinv(m[1]) @ m[0]
         return R @ Z, R
