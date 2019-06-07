@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import sin, cos, pi
+from numpy.core._multiarray_umath import pi, sin, cos
 
 
 class GroundTruth:

@@ -1,8 +1,7 @@
-
 import numpy as np
-from numpy import sqrt, pi, cos, sin
+from numpy.core._multiarray_umath import sqrt, pi, cos, sin
 from numpy.linalg import pinv
-from numpy.random import normal, standard_normal
+from numpy.random.mtrand import standard_normal, normal
 
 from msdf.truth import GroundTruth
 
@@ -11,7 +10,7 @@ class Sensor:
     __slots__ = 'truth'
 
     def get_positions(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def H(self):
@@ -36,7 +35,7 @@ class Sensor:
         return 6.75 * error
 
     def measure(self, t):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class GridSensor(Sensor):
