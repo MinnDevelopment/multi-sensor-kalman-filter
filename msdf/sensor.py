@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.core._multiarray_umath import sqrt, pi, cos, sin
-from numpy.linalg import pinv
+from numpy.linalg import inv
 from numpy.random.mtrand import standard_normal, normal
 
 from msdf.truth import GroundTruth
@@ -32,9 +32,9 @@ class Sensor:
                           [delta3, 0, delta2, 0],
                           [0, delta3, 0, delta2]])
         # Choose sigma from [4.5, 9]
-        return 6.75 * error
+        return 4.5 * error
 
-    def measure(self, t):
+    def measure(self, t) -> tuple:
         raise NotImplementedError()
 
 
@@ -61,7 +61,7 @@ class GridSensor(Sensor):
 
 
 class RadarSensor(Sensor):
-    def __init__(self, pos, sigma_range=20, sigma_azimuth=0.2):
+    def __init__(self, pos, sigma_range=1, sigma_azimuth=0.2):
         self.truth = GroundTruth()
         self.pos = np.vstack(pos)
         self.sigma_range = sigma_range
@@ -82,20 +82,21 @@ class RadarSensor(Sensor):
     def into_radar(self, vec):
         x, y = vec
         (x_sensor, y_sensor) = self.pos.flatten()
-        r = sqrt((x - x_sensor) ** 2 + (y - y_sensor) ** 2)
-        # arctan changes for 4 sectors of cartesian coordinates
-        # +x, +y = + 0
-        # -x, +y = + pi
-        # -x, -y = + pi
-        # +x, -y = + 2pi
-        if x == x_sensor and y == y_sensor:
-            return np.vstack([r, 0])
-        phi = np.arctan((y - y_sensor) / (x - x_sensor))
-        if x >= x_sensor:
-            if y < y_sensor:
-                phi += 2 * pi
+        x -= x_sensor
+        y -= y_sensor
+        r = sqrt(x ** 2 + y ** 2)
+
+        if x != 0:
+            phi = np.arctan(y / x)
+            if x < 0:
+                phi += pi
+            return np.vstack([r, phi])
+        if y == 0:
+            phi = 0
+        elif y < 0:
+            phi = 3*pi/2
         else:
-            phi += pi
+            phi = pi/2
         return np.vstack([r, phi])
 
     def radar_truth(self, t):
@@ -105,7 +106,6 @@ class RadarSensor(Sensor):
 
     def radar(self, t):
         error = self.__error
-        print("Radar error", error.flatten())
         return self.radar_truth(t) + error
 
     @staticmethod
@@ -122,16 +122,25 @@ class RadarSensor(Sensor):
         return np.array([[1, 0],
                          [0, r]])
 
-    def measure(self, t):
-        prediction = self.radar(t)
-        truth = self.radar_truth(t)
-        r, phi = truth.flatten()
+    def taylor(self, t):
+        x = self.radar(t)
+        r, phi = x.flatten()
+        term = self.cartesian(r, phi)
         D = self.rotation(phi)
         S = self.dilation(r)
         T = D @ S
-        R = T @ self.R @ T.T
-        cartesian = self.cartesian(r, phi) + T @ (prediction - truth)
-        return cartesian + self.pos, R
+
+        def polynomial(z):
+            return term + T @ (z - x)
+
+        covariance = T @ self.R @ T.T
+        return polynomial, covariance
+
+    def measure(self, t):
+        polynomial, covariance = self.taylor(t)
+        truth = self.radar_truth(t)
+        state = polynomial(truth) + self.pos
+        return state, covariance
 
 
 class MergedSensor(Sensor):
@@ -153,13 +162,15 @@ class MergedSensor(Sensor):
     def R(self, matrices):
         sigma = np.zeros((2, 2))
         for m in matrices:
-            sigma += pinv(m)
-        return pinv(sigma)
+            sigma += inv(m)
+        return inv(sigma)
 
     def measure(self, t):
         measurements = [s.measure(t) for s in self.sensors]
         R = self.R([z[1] for z in measurements])
         Z = np.zeros((2, 1))
         for m in measurements:
-            Z += pinv(m[1]) @ m[0]
+            weight = inv(m[1])
+            state = m[0]
+            Z += weight @ state
         return R @ Z, R
