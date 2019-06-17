@@ -6,6 +6,14 @@ from numpy.random.mtrand import standard_normal, normal
 from msdf.truth import GroundTruth
 
 
+def degree_to_radian(phi):
+    return phi * (pi / 180)
+
+
+angle_error = degree_to_radian(0.2)
+range_error = 20
+
+
 class Sensor:
     __slots__ = 'truth'
 
@@ -64,7 +72,7 @@ class GridSensor(Sensor):
 
 
 class RadarSensor(Sensor):
-    def __init__(self, pos, sigma_range=1, sigma_azimuth=0.1):
+    def __init__(self, pos, sigma_range=range_error, sigma_azimuth=angle_error):
         self.truth = GroundTruth()
         self.pos = np.vstack(pos)
         self.sigma_range = sigma_range
