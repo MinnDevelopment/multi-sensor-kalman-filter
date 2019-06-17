@@ -33,9 +33,6 @@ class WorldPlotter(Plotter):
         def init_frame():
             ax.set_xlim(-12000, 12000)
             ax.set_ylim(-12000, 12000)
-            for p in self.sensor.get_positions() or []:
-                if p is not None:
-                    ax.plot(*p.flatten(), 'kx')
 
             if check("track", kwargs):
                 traj = [self.truth.trajectory(t) for t in self.truth.space]
@@ -55,8 +52,8 @@ class WorldPlotter(Plotter):
                 print("Filtering...", z.flatten(), R.flatten())
                 H = self.sensor.H
                 x, P = self.kalman.filtering(z, (x, P), H, R, self.count)
-            elif delta == 1:
-                self.kalman.retrodiction(self.sensor.F(1))
+            # elif delta == 1: TODO: Fix this
+            #     self.kalman.retrodiction(self.sensor.F(1))
 
             print("Measure", z.flatten())
             print("Truth", true_position)
@@ -65,6 +62,8 @@ class WorldPlotter(Plotter):
             print("Covariance", R.flatten())
 
             measurements.append(z.flatten())
+
+            self.sensor.draw(ax, z)
 
             predictions = [z[0] for z in self.kalman.predictions]
             if check("prediction", kwargs):

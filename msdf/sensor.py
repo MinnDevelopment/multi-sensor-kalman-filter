@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.core._multiarray_umath import sqrt, pi, cos, sin
+from numpy import sqrt, pi, cos, sin
 from numpy.linalg import inv
 from numpy.random.mtrand import standard_normal, normal
 
@@ -8,6 +8,9 @@ from msdf.truth import GroundTruth
 
 class Sensor:
     __slots__ = 'truth'
+
+    def draw(self, ax, state):
+        pass
 
     def get_positions(self):
         raise NotImplementedError()
@@ -61,11 +64,48 @@ class GridSensor(Sensor):
 
 
 class RadarSensor(Sensor):
-    def __init__(self, pos, sigma_range=1, sigma_azimuth=0.2):
+    def __init__(self, pos, sigma_range=1, sigma_azimuth=0.1):
         self.truth = GroundTruth()
         self.pos = np.vstack(pos)
         self.sigma_range = sigma_range
         self.sigma_azimuth = sigma_azimuth
+        self.ptr = []
+
+    def reset(self):
+        for p in self.ptr:
+            p.remove()
+        self.ptr.clear()
+
+    def draw(self, ax, state):
+        self.reset()
+        line, = ax.plot(*self.pos, "kx")
+        self.ptr.append(line)
+
+        state = state.flatten()
+        # x, y = self.pos.tolist()
+        # x.append(state[0])
+        # y.append(state[1])
+        # line, = ax.plot(x, y, "b", alpha=.5)
+        # self.ptr.append(line)
+
+        x, y = self.pos.tolist()
+        r, phi = self.into_radar(state)
+        phi += self.sigma_azimuth
+        cartesian_state = self.cartesian(r, phi) + self.pos
+        x2, y2 = cartesian_state.flatten()
+        x.append(x2)
+        y.append(y2)
+        line, = ax.plot(x, y, "b", alpha=.5)
+        self.ptr.append(line)
+
+        x, y = self.pos.tolist()
+        phi -= 2 * self.sigma_azimuth
+        cartesian_state = self.cartesian(r, phi) + self.pos
+        x2, y2 = cartesian_state.flatten()
+        x.append(x2)
+        y.append(y2)
+        line, = ax.plot(x, y, "b", alpha=.5)
+        self.ptr.append(line)
 
     def get_positions(self):
         return [self.pos]
@@ -146,6 +186,10 @@ class RadarSensor(Sensor):
 class MergedSensor(Sensor):
     def __init__(self, sensors):
         self.sensors = sensors
+
+    def draw(self, ax, state):
+        for s in self.sensors:
+            s.draw(ax, state)
 
     def get_positions(self):
         positions = []
