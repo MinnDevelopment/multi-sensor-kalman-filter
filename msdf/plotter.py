@@ -52,8 +52,8 @@ class WorldPlotter(Plotter):
                 print("Filtering...", z.flatten(), R.flatten())
                 H = self.sensor.H
                 x, P = self.kalman.filtering(z, (x, P), H, R, self.count)
-            # elif delta == 1: TODO: Fix this
-            #     self.kalman.retrodiction(self.sensor.F(1))
+            elif delta == 1:
+                self.kalman.retrodiction(self.sensor.F(1))
 
             print("Measure", z.flatten())
             print("Truth", true_position)

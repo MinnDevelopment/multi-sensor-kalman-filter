@@ -10,7 +10,7 @@ def degree_to_radian(phi):
     return phi * (pi / 180)
 
 
-angle_error = degree_to_radian(0.2)
+angle_error = degree_to_radian(1)
 range_error = 20
 
 
@@ -90,11 +90,6 @@ class RadarSensor(Sensor):
         self.ptr.append(line)
 
         state = state.flatten()
-        # x, y = self.pos.tolist()
-        # x.append(state[0])
-        # y.append(state[1])
-        # line, = ax.plot(x, y, "b", alpha=.5)
-        # self.ptr.append(line)
 
         x, y = self.pos.tolist()
         r, phi = self.into_radar(state)
