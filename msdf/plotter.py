@@ -52,7 +52,7 @@ class WorldPlotter(Plotter):
                 print("Filtering...", z.flatten(), R.flatten())
                 H = self.sensor.H
                 x, P = self.kalman.filtering(z, (x, P), H, R, self.count)
-            elif delta == 1:
+            elif delta == 1 and check("retrodiction", kwargs):
                 self.kalman.retrodiction(self.sensor.F(1))
 
             print("Measure", z.flatten())
@@ -86,4 +86,4 @@ class WorldPlotter(Plotter):
             self.count += 1
             print()
 
-        return anim.FuncAnimation(fig, update_frame, self.truth.space, init_frame, interval=50, repeat=False)
+        return anim.FuncAnimation(fig, update_frame, self.truth.space, init_frame, interval=10, repeat=False)

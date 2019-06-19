@@ -53,7 +53,7 @@ def main():
 
     kalman = KalmanFilter()
     plotter = WorldPlotter(truth, sensor, kalman)
-    a = plotter.animate(prediction=True)
+    a = plotter.animate(prediction=True, retrodiction=True, measures=True)
     plt.show()
 
     return 0

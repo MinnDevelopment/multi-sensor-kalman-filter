@@ -12,9 +12,11 @@ def degree_to_radian(phi):
 
 angle_error = degree_to_radian(10)
 range_error = 20
+grid_error = 100
 
 print("Azimuth Error:", angle_error, "rad")
-print("Range Error:", range_error, "\n")
+print("Range Error:", range_error)
+print("Grid Error:", grid_error, "\n")
 
 
 class Sensor:
@@ -53,7 +55,7 @@ class Sensor:
 
 
 class GridSensor(Sensor):
-    def __init__(self, sigma=50):
+    def __init__(self, sigma=grid_error):
         self.sigma = sigma
 
     def get_positions(self):
