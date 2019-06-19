@@ -16,10 +16,11 @@ class Plotter:
 
 
 class WorldPlotter(Plotter):
-    def __init__(self, truth, sensor, kalman):
+    def __init__(self, truth, sensor, kalman, logging=False):
         self.truth = truth
         self.sensor = sensor
         self.kalman = kalman
+        self.logging = logging
         self.pred_ptr = None
         self.measure_ptr = None
         self.ptr = None
@@ -28,7 +29,10 @@ class WorldPlotter(Plotter):
     def animate(self, **kwargs):
         fig, ax = plt.subplots()
 
-        measurements = []
+        measurements_x = []
+        measurements_y = []
+        predictions_x = []
+        predictions_y = []
 
         def init_frame():
             ax.set_xlim(-12000, 12000)
@@ -49,41 +53,53 @@ class WorldPlotter(Plotter):
             z, R = self.sensor.measure(t)
             x, P = self.kalman.prediction(F, D)
             if delta >= 5:
-                print("Filtering...", z.flatten(), R.flatten())
+                if self.logging:
+                    print("Filtering...", z.flatten(), R.flatten())
                 H = self.sensor.H
                 x, P = self.kalman.filtering(z, (x, P), H, R, self.count)
             elif delta == 1 and check("retrodiction", kwargs):
                 self.kalman.retrodiction(self.sensor.F(1))
 
-            print("Measure", z.flatten())
-            print("Truth", true_position)
-            print("Prediction", x.flatten()[0:2])
-            print("Missed by ", dist(true_position, x))
-            print("Covariance", R.flatten())
+            if self.logging:
+                print("Measure", z.flatten())
+                print("Truth", true_position)
+                print("Prediction", x.flatten()[0:2])
+                print("Missed by ", dist(true_position, x))
+                print("Covariance", R.flatten())
 
-            measurements.append(z.flatten())
+            measurements_x.append(*z[0])
+            measurements_y.append(*z[1])
+            predictions_x.append(*x[0])
+            predictions_y.append(*x[1])
 
+            # plot sensor positions and visualizations
             self.sensor.draw(ax, z)
 
-            predictions = [z[0] for z in self.kalman.predictions]
+            # print line of predictions
             if check("prediction", kwargs):
+                x = predictions_x
+                y = predictions_y
                 if self.pred_ptr:
-                    self.pred_ptr.remove()
-                x = [v[0] for v in predictions]
-                y = [v[1] for v in predictions]
-                self.pred_ptr, = ax.plot(x, y, 'b')
+                    self.pred_ptr.set_data(x, y)
+                else:
+                    self.pred_ptr, = ax.plot(x, y, 'b')
 
+            # print line of measurements (scattered)
             if check("measures", kwargs):
+                x = measurements_x
+                y = measurements_y
                 if self.measure_ptr:
-                    self.measure_ptr.remove()
-                x = [v[0] for v in measurements]
-                y = [v[1] for v in measurements]
-                self.measure_ptr, = ax.plot(x, y, 'r', alpha=0.5)
+                    self.measure_ptr.set_data(x, y)
+                else:
+                    self.measure_ptr, = ax.plot(x, y, 'r', alpha=0.5)
 
+            # print true position
             if self.ptr:
-                self.ptr.remove()
-            self.ptr, = ax.plot(*true_position, 'ko')
+                self.ptr.set_data(*true_position)
+            else:
+                self.ptr, = ax.plot(*true_position, 'ko')
             self.count += 1
-            print()
+            if self.logging:
+                print()
 
-        return anim.FuncAnimation(fig, update_frame, self.truth.space, init_frame, interval=10, repeat=False)
+        return anim.FuncAnimation(fig, update_frame, self.truth.space, init_frame, interval=50, repeat=False)

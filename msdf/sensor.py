@@ -10,7 +10,7 @@ def degree_to_radian(phi):
     return phi * (pi / 180)
 
 
-angle_error = degree_to_radian(10)
+angle_error = degree_to_radian(1)
 range_error = 20
 grid_error = 100
 
@@ -58,6 +58,9 @@ class GridSensor(Sensor):
     def __init__(self, sigma=grid_error):
         self.sigma = sigma
 
+    def __repr__(self):
+        return f"GridSensor(error={self.sigma})"
+
     def get_positions(self):
         return None
 
@@ -83,6 +86,9 @@ class RadarSensor(Sensor):
         self.sigma_range = sigma_range
         self.sigma_azimuth = sigma_azimuth
         self.ptr = []
+
+    def __repr__(self):
+        return f"Radar(range_error={self.sigma_range}, angle_error={self.sigma_azimuth}, position={self.pos.flatten()})"
 
     def reset(self):
         for p in self.ptr:
@@ -194,6 +200,9 @@ class RadarSensor(Sensor):
 class MergedSensor(Sensor):
     def __init__(self, sensors):
         self.sensors = sensors
+
+    def __repr__(self):
+        return str(self.sensors)
 
     def draw(self, ax, state):
         for s in self.sensors:

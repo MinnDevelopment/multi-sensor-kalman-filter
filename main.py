@@ -12,17 +12,19 @@ def add_sensor(pos, sensors, truth):
 def radar(truth):
     sensors = []
 
+    # preset = one sensor in each loop and one above and below the intersection respectively
     answer = input("Use preset? [y/n] ")
-    if answer.lower() == "y":
+    if answer in "yY":
         for pos in preset:
             add_sensor(pos, sensors, truth)
     else:
         answer = "y"
-        while answer.lower() == "y":
+        while answer in "yY":
             print("Adding new sensor...")
             x = int(input("x = "))
             y = int(input("y = "))
             add_sensor((x, y), sensors, truth)
+            print("Current sensors:", sensors)
             answer = input("Continue? [y/n] ")
 
     return MergedSensor(sensors)
@@ -35,10 +37,11 @@ def grid(truth):
 
 
 def main():
+    # open interactive menu for configuration
     truth = GroundTruth()
-    sensor = None
 
     print("Choose Sensor Type")
+    print("[0] Exit Program")
     print("[1] Radar")
     print("[2] Grid")
     answer = input("\nType: ")
@@ -47,13 +50,18 @@ def main():
         sensor = radar(truth)
     elif answer == "2":
         sensor = grid(truth)
+    elif answer == "0":
+        return 0
     else:
         print("Try again!")
-        exit(1)
+        return 1
+
+    answer = input("Use retrodiction? [y/n] ")
+    retro = answer in "yY"
 
     kalman = KalmanFilter()
     plotter = WorldPlotter(truth, sensor, kalman)
-    a = plotter.animate(prediction=True, retrodiction=True, measures=True)
+    a = plotter.animate(retrodiction=retro)
     plt.show()
 
     return 0
@@ -61,5 +69,7 @@ def main():
 
 if __name__ == '__main__':
     import sys
-
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(1)
