@@ -10,8 +10,11 @@ def degree_to_radian(phi):
     return phi * (pi / 180)
 
 
-angle_error = degree_to_radian(1)
+angle_error = degree_to_radian(10)
 range_error = 20
+
+print("Azimuth Error:", angle_error, "rad")
+print("Range Error:", range_error, "\n")
 
 
 class Sensor:
