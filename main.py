@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from msdf import *
 
 preset = [(6000, 0), (-6000, 0), (0, 5000), (0, -5000)]
