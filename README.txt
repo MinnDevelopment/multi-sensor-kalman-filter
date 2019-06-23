@@ -1,4 +1,6 @@
 
+Installation: python3 -m pip install -r requirements.txt
+
 Das Program fragt interaktiv nach bestimmten Einstellungen für die Simulation.
 
 Ausführen:
